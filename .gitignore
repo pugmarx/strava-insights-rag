@@ -1,0 +1,8 @@
+## Ignore Python cache files, build files, and the virtual environment
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore the virtual environment
+.strava/
+.env

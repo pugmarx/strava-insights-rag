@@ -7,3 +7,7 @@ pgvector
 requests
 python-dotenv
 flask
+matplotlib 
+seaborn 
+scikit-learn 
+pandas

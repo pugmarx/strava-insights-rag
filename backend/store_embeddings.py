@@ -29,6 +29,8 @@ cur = conn.cursor()
 # Function to convert activity into an embedding
 def generate_embedding(activity):
     text = f"{activity['name']} {activity['type']} {activity['distance']} meters in {activity['elapsed_time']} seconds"
+    print(f"Generating embedding for: {text}")
+    # Generate embedding using the model
     return model.encode(text).tolist()
 
 # Function to convert ISO 8601 to PostgreSQL timestamp

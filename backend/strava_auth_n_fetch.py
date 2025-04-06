@@ -77,8 +77,8 @@ def fetch_strava_activities():
 
     url = "https://www.strava.com/api/v3/athlete/activities"
     headers = {"Authorization": f"Bearer {access_token}"}
-
-    response = requests.get(url, headers=headers)
+    params = {"per_page": 200, "page": 1}
+    response = requests.get(url, headers=headers, params=params)
     
     if response.status_code == 200:
         activities = response.json()

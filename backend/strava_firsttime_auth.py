@@ -89,30 +89,30 @@ def get_access_token():
     
     return token_data["access_token"]
 
-def fetch_strava_activities():
-    """Fetch activities from Strava using the latest access token."""
-    access_token = get_access_token()
-    if not access_token:
-        return {"error": "No valid access token available."}
+# def fetch_strava_activities():
+#     """Fetch activities from Strava using the latest access token."""
+#     access_token = get_access_token()
+#     if not access_token:
+#         return {"error": "No valid access token available."}
     
-    url = "https://www.strava.com/api/v3/athlete/activities"
-    headers = {"Authorization": f"Bearer {access_token}"}
+#     url = "https://www.strava.com/api/v3/athlete/activities"
+#     headers = {"Authorization": f"Bearer {access_token}"}
 
-    response = requests.get(url, headers=headers)
+#     response = requests.get(url, headers=headers)
     
-    if response.status_code == 200:
-        return response.json()  # Return activity data
-    elif response.status_code == 401:  # Token expired, refresh and retry
-        print("Access token expired. Refreshing...")
-        access_token = refresh_access_token()
-        if not access_token:
-            return {"error": "Failed to refresh access token."}
+#     if response.status_code == 200:
+#         return response.json()  # Return activity data
+#     elif response.status_code == 401:  # Token expired, refresh and retry
+#         print("Access token expired. Refreshing...")
+#         access_token = refresh_access_token()
+#         if not access_token:
+#             return {"error": "Failed to refresh access token."}
         
-        headers["Authorization"] = f"Bearer {access_token}"
-        response = requests.get(url, headers=headers)
-        return response.json() if response.status_code == 200 else {"error": response.json()}
-    else:
-        return {"error": response.json()}
+#         headers["Authorization"] = f"Bearer {access_token}"
+#         response = requests.get(url, headers=headers)
+#         return response.json() if response.status_code == 200 else {"error": response.json()}
+#     else:
+#         return {"error": response.json()}
 
 # 🚀 First Step: Open this URL and authorize your app
 print("🔗 Open this URL in your browser and approve access:")
@@ -122,10 +122,10 @@ print(get_auth_url())
 auth_code = input("\n🔑 Enter the authorization code from Strava: ").strip()
 exchange_code_for_token(auth_code)  # Exchange the code and save tokens
 
-# 🔹 Fetch and print activities
-activities = fetch_strava_activities()
-if "error" not in activities:
-    for activity in activities[:5]:  # Print first 5 activities
-        print(f"{activity['name']} - {activity['type']} - {activity['distance']} meters")
-else:
-    print("Error:", activities["error"])
+# # 🔹 Fetch and print activities
+# activities = fetch_strava_activities()
+# if "error" not in activities:
+#     for activity in activities[:5]:  # Print first 5 activities
+#         print(f"{activity['name']} - {activity['type']} - {activity['distance']} meters")
+# else:
+#     print("Error:", activities["error"])

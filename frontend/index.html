@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Strava Activity Query</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      background-color: #f4f4f4;
+    }
+    h1 {
+      color: #333;
+    }
+    #questionInput {
+      width: 60%;
+      padding: 10px;
+      font-size: 16px;
+    }
+    #submitButton {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+    #responseBox {
+      margin-top: 2rem;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    table {
+      margin-top: 1rem;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+    }
+    th {
+      background-color: #eee;
+    }
+    code {
+      display: block;
+      background: #f0f0f0;
+      padding: 0.5rem;
+      margin: 0.5rem 0;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ask about your activities</h1>
+  <input type="text" id="questionInput" placeholder="e.g. Which activity did I do most in March?">
+  <button id="submitButton">Submit</button>
+
+  <div id="responseBox"></div>
+
+  <script>
+    document.getElementById("submitButton").addEventListener("click", async () => {
+      const question = document.getElementById("questionInput").value;
+      const responseBox = document.getElementById("responseBox");
+
+      try {
+        const response = await fetch("http://localhost:5000/query", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          let formattedResults = "<table><tr>";
+          if (data.results.length > 0) {
+            Object.keys(data.results[0]).forEach(col => {
+              formattedResults += `<th>${col}</th>`;
+            });
+            formattedResults += "</tr>";
+
+            data.results.forEach(row => {
+              formattedResults += "<tr>";
+              Object.values(row).forEach(val => {
+                formattedResults += `<td>${val}</td>`;
+              });
+              formattedResults += "</tr>";
+            });
+            formattedResults += "</table>";
+          } else {
+            formattedResults = "<em>No results found.</em>";
+          }
+
+          responseBox.innerHTML = `
+            <strong>SQL Query:</strong>
+            <code>${data.sql_query}</code>
+            <strong>Results:</strong>
+            ${formattedResults}
+          `;
+        } else {
+          responseBox.innerHTML = `<span style="color: red;">Error: ${data.error}</span>`;
+        }
+      } catch (err) {
+        responseBox.innerHTML = `<span style="color: red;">Error: ${err.message}</span>`;
+      }
+    });
+  </script>
+</body>
+</html>

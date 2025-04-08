@@ -1,8 +1,11 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from sql_generator import generate_sql_query, execute_sql_query
+
 
 # Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 
 @app.route("/query", methods=["POST"])
 def query():

@@ -17,7 +17,7 @@
       padding: 10px;
       font-size: 16px;
     }
-    #submitButton {
+    #submitButton, #voiceButton {
       padding: 10px 20px;
       font-size: 16px;
       margin-left: 10px;
@@ -49,30 +49,39 @@
       margin: 0.5rem 0;
       border-radius: 4px;
     }
+    #transcript {
+      font-style: italic;
+      margin-top: 10px;
+      color: #555;
+    }
   </style>
 </head>
 <body>
   <h1>Ask about your activities</h1>
   <input type="text" id="questionInput" placeholder="e.g. Which activity did I do most in March?">
-  <button id="submitButton">Submit</button>
+  <button id="submitButton">→</button>
+  <button id="voiceButton" onclick="startVoiceRecognition()">🎙️</button>
+  <p id="transcript"></p>
 
   <div id="responseBox"></div>
 
   <script>
-    document.getElementById("submitButton").addEventListener("click", async () => {
+    document.getElementById("submitButton").addEventListener("click", () => {
       const question = document.getElementById("questionInput").value;
+      sendQuery(question);
+    });
+
+    function sendQuery(question) {
       const responseBox = document.getElementById("responseBox");
 
-      try {
-        const response = await fetch("http://localhost:5000/query", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
+      fetch("http://localhost:5000/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.sql_query) {
           let formattedResults = "<table><tr>";
           if (data.results.length > 0) {
             Object.keys(data.results[0]).forEach(col => {
@@ -101,10 +110,39 @@
         } else {
           responseBox.innerHTML = `<span style="color: red;">Error: ${data.error}</span>`;
         }
-      } catch (err) {
+      })
+      .catch(err => {
         responseBox.innerHTML = `<span style="color: red;">Error: ${err.message}</span>`;
+      });
+    }
+
+    function startVoiceRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Your browser does not support voice recognition.");
+        return;
       }
-    });
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      document.getElementById("transcript").textContent = "Listening...";
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("transcript").textContent = `🗣️ You said: "${transcript}"`;
+        document.getElementById("questionInput").value = transcript;
+        sendQuery(transcript);
+      };
+
+      recognition.onerror = (event) => {
+        document.getElementById("transcript").textContent = `❌ Error: ${event.error}`;
+      };
+
+      recognition.start();
+    }
   </script>
 </body>
 </html>

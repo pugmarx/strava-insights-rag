@@ -82,6 +82,7 @@ def generate_sql_query(user_question):
     - PostgreSQL does **not support** YEAR(timestamp). Instead, use: EXTRACT(YEAR FROM "timestamp")
     - Same for month: use EXTRACT(MONTH FROM "timestamp")
     - Use double quotes for column names when needed (like "timestamp")
+    - Write SQL that finds similar runs using embedding comparison, and if you use subqueries or CTEs, make sure to include all columns that are referenced later (e.g. timestamp).
     - Just return the SQL query, no other text.
     
     

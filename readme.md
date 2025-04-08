@@ -1,6 +1,4 @@
-
 ## Strava-API-AI
-
 
 ### Prerequisites
 
@@ -10,13 +8,20 @@ pip install fastapi uvicorn psycopg2-binary coremltools sentence-transformers pg
 ```
 
 
-### Comparison Summary
-| Function | Operator | Best For  | Interpretation  |
-|-----------------|-----------------|-----------------|-----------------|
-| Cosine Similarity   | <=> | Contextual similarity  | Higher = More similar  |
-| L2 Distance	| <-> |	Geometric proximity |	Lower = More similar |
-| Inner Product | <#> |	Pre-normalized vectors | Higher = More similar |
+### Vector Similarity Metrics in pgvector
 
+> All distance operators in pgvector return **lower values for more similar vectors**.
+
+| Metric                  | Operator | Best For                     | Interpretation             |
+|-------------------------|----------|-------------------------------|----------------------------|
+| **Cosine Distance**     | `<=>`    | Semantic/contextual similarity | **Lower = More similar**   |
+| **Euclidean (L2)**      | `<->`    | Geometric proximity            | **Lower = More similar**   |
+| **Inner Product (neg.)**| `<#>`    | Normalized vectors (dot product) | **Lower = More similar** *(negative inner product)* |
+
+### Notes:
+- `<=>` is commonly used with **cosine distance**, depending on your index setup.
+- If you want **similarity**, you can compute `1 - distance`.
+- Ensure your vector column is indexed appropriately (`USING ivfflat WITH (distance_metric = 'cosine')`, etc).
 
 
 ### Execution

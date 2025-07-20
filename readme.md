@@ -28,7 +28,7 @@ pip install fastapi uvicorn psycopg2-binary coremltools sentence-transformers pg
 
 
 ### Execution
-1. Create `backend/.env` with:
+1. Copy `sample.env`/create `.env` with:
 ```properties
 # Strava
 STRAVA_USER_ID = "xxx"

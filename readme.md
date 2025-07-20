@@ -31,14 +31,14 @@ pip install fastapi uvicorn psycopg2-binary coremltools sentence-transformers pg
 1. Copy `sample.env`/create `.env` with:
 ```properties
 # Strava
-STRAVA_USER_ID = "xxx"
-STRAVA_CLIENT_ID = "xxx"
-STRAVA_CLIENT_SECRET = "xxxx"
+STRAVA_USER_ID = "YOUR_STRAVA_USER_ID"
+STRAVA_CLIENT_ID = "YOUR_STRAVA_CLIENT_ID"
+STRAVA_CLIENT_SECRET = "YOUR_STRAVA_CLIENT_SECRET"
 
 # Database
 POSTGRES_DB="stravadb"
 POSTGRES_USER="strava_user"
-POSTGRES_PASSWORD="strava"
+POSTGRES_PASSWORD="YOUR_DB_PASSWORD"
 POSTGRES_HOST="localhost"
 POSTGRES_PORT= "5432"
 ```

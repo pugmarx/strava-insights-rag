@@ -17,7 +17,7 @@ POSTGRES_PORT = os.getenv("POSTGRES_PORT")
 
 # Ollama API details
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "mistral"  # Ensure Mistral is installed in Ollama
+MODEL_NAME = "mistral"  # Change model here
 
 # Database connection
 def connect_db():

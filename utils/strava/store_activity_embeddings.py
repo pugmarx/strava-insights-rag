@@ -38,7 +38,7 @@ def parse_timestamp(iso_date):
     return datetime.fromisoformat(iso_date.replace("Z", "+00:00"))
 
 
-USER_ID = os.getenv("USER_ID")
+STRAVA_USER_ID = os.getenv("STRAVA_USER_ID")
 
 for activity in activities:
     embedding = generate_embedding(activity)
@@ -52,7 +52,7 @@ for activity in activities:
         """,
         (
             activity["id"],  # Unique Strava activity ID
-            USER_ID,
+            STRAVA_USER_ID,
             activity["type"],
             activity["distance"],
             activity["elapsed_time"],

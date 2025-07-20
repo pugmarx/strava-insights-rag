@@ -1,4 +1,7 @@
 ## Strava-API-AI
+This started off as a hobby project for me to understand RAG, using basic embeddings. Whenever I can make time, I keep refining it.
+
+**[A more technical overview](docs/overview.md)**
 
 ### Prerequisites
 
@@ -28,9 +31,9 @@ pip install fastapi uvicorn psycopg2-binary coremltools sentence-transformers pg
 1. Create `backend/.env` with:
 ```properties
 # Strava
-USER_ID = "xxx"
-CLIENT_ID = "xxx"
-CLIENT_SECRET = "xxxx"
+STRAVA_USER_ID = "xxx"
+STRAVA_CLIENT_ID = "xxx"
+STRAVA_CLIENT_SECRET = "xxxx"
 
 # Database
 POSTGRES_DB="stravadb"

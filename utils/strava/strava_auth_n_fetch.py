@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Read values
-CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+STRAVA_CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
+STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
 TOKEN_FILE = "token.json"  # Store tokens in a file
 
 def get_saved_token():
@@ -41,8 +41,8 @@ def refresh_access_token():
 
     url = "https://www.strava.com/api/v3/oauth/token"
     payload = {
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
+        "client_id": STRAVA_CLIENT_ID,
+        "client_secret": STRAVA_CLIENT_SECRET,
         "refresh_token": token_data["refresh_token"],
         "grant_type": "refresh_token",
     }

@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Read values
-CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+STRAVA_CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
+STRAVA_CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
 REDIRECT_URI = "http://localhost:8080"  # Must match your Strava app settings
 TOKEN_FILE = "token.json"  # File to store tokens
 
@@ -16,7 +16,7 @@ def get_auth_url():
     """Generate Strava authorization URL with full activity permissions."""
     return (
         f"https://www.strava.com/oauth/authorize"
-        f"?client_id={CLIENT_ID}"
+        f"?client_id={STRAVA_CLIENT_ID}"
         f"&response_type=code"
         f"&redirect_uri={REDIRECT_URI}"
         f"&scope=read,activity:read,activity:read_all"
@@ -27,8 +27,8 @@ def exchange_code_for_token(auth_code):
     """Exchange the authorization code for an access token."""
     url = "https://www.strava.com/api/v3/oauth/token"
     payload = {
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
+        "client_id": STRAVA_CLIENT_ID,
+        "client_secret": STRAVA_CLIENT_SECRET,
         "code": auth_code,
         "grant_type": "authorization_code",
     }
@@ -63,8 +63,8 @@ def refresh_access_token():
 
     url = "https://www.strava.com/api/v3/oauth/token"
     payload = {
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
+        "client_id": STRAVA_CLIENT_ID,
+        "client_secret": STRAVA_CLIENT_SECRET,
         "refresh_token": token_data["refresh_token"],
         "grant_type": "refresh_token",
     }

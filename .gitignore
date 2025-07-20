@@ -6,3 +6,13 @@ __pycache__/
 # Ignore the virtual environment
 .strava/
 .env
+
+# Ignore locally stored token files
+*.token
+token.json
+
+# Ignore sensitive files/local cache
+activities.json
+strava.properties
+
+.DS_Store

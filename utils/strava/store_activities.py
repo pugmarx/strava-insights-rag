@@ -48,7 +48,13 @@ for activity in activities:
         """
         INSERT INTO activities (activity_id, user_id, activity_type, distance, duration, timestamp, embedding)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (activity_id) DO NOTHING  -- Avoid inserting duplicates
+        ON CONFLICT (activity_id) DO UPDATE SET
+            user_id = EXCLUDED.user_id,
+            activity_type = EXCLUDED.activity_type,
+            distance = EXCLUDED.distance,
+            duration = EXCLUDED.duration,
+            timestamp = EXCLUDED.timestamp,
+            embedding = EXCLUDED.embedding
         """,
         (
             activity["id"],  # Unique Strava activity ID

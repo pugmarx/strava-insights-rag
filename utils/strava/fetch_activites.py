@@ -1,12 +1,18 @@
 import json
 import time
 import requests
+import os
+
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 TOKEN_FILE = "token.json"
 ACTIVITIES_FILE = "activities.json"
 
-CLIENT_ID = "your_client_id"
-CLIENT_SECRET = "your_client_secret"
+CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
+CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
 
 TOKEN_URL = "https://www.strava.com/api/v3/oauth/token"
 ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"

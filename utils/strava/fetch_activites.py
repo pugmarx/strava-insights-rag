@@ -1,7 +1,7 @@
-import json
+import os
 import time
 import requests
-import os
+import json
 
 from dotenv import load_dotenv
 
@@ -30,10 +30,10 @@ def save_tokens(token_data):
 
 def refresh_token_if_needed(tokens):
     if time.time() < tokens["expires_at"]:
-        print("✅ Access token is still valid.")
+        print(">> Access token is still valid.")
         return tokens
 
-    print("🔁 Access token expired. Refreshing...")
+    print(">> Access token expired. Refreshing...")
 
     response = requests.post(TOKEN_URL, data={
         "client_id": CLIENT_ID,
@@ -55,11 +55,11 @@ def refresh_token_if_needed(tokens):
     }
 
     save_tokens(refreshed)
-    print("✅ Token refreshed and saved.")
+    print(">> Token refreshed and saved.")
     return refreshed
 
 
-def fetch_activities(access_token, per_page=50, max_pages=5):
+def fetch_activities(access_token, per_page=100, max_pages=10):
     headers = {"Authorization": f"Bearer {access_token}"}
     all_activities = []
 
@@ -71,7 +71,7 @@ def fetch_activities(access_token, per_page=50, max_pages=5):
         })
 
         if res.status_code != 200:
-            print(f"❌ Error fetching page {page}: {res.status_code}")
+            print(f"ERROR: Error fetching page {page}: {res.status_code}")
             break
 
         page_data = res.json()
@@ -80,7 +80,7 @@ def fetch_activities(access_token, per_page=50, max_pages=5):
 
         all_activities.extend(page_data)
 
-    print(f"✅ Total activities fetched: {len(all_activities)}")
+    print(f">> Total activities fetched: {len(all_activities)}")
     return all_activities
 
 
@@ -93,7 +93,7 @@ def main():
     with open(ACTIVITIES_FILE, "w") as f:
         json.dump(activities, f, indent=2)
 
-    print(f"✅ Activities saved to {ACTIVITIES_FILE}")
+    print(f">> Activities saved to {ACTIVITIES_FILE}")
 
 
 if __name__ == "__main__":

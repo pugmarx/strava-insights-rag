@@ -1,4 +1,4 @@
-# A Simple LLM Overview
+# Functional Overview
 
 **Process Strava activity data** – Store it in a structured format (PostgreSQL database).  
 **Embed key details** – Using pgvector or another vector-based approach to enable semantic search.  

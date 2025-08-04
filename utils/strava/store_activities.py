@@ -1,8 +1,10 @@
 import json
 import psycopg2
 import os
+import sys
 from sentence_transformers import SentenceTransformer
 from datetime import datetime
+from tqdm import tqdm
 
 from dotenv import load_dotenv
 
@@ -29,7 +31,6 @@ cur = conn.cursor()
 # Function to convert activity into an embedding
 def generate_embedding(activity):
     text = f"{activity['name']} {activity['type']} {activity['distance']} meters in {activity['elapsed_time']} seconds"
-    print(f"Generating embedding for: {text}")
     # Generate embedding using the model
     return model.encode(text).tolist()
 
@@ -40,7 +41,15 @@ def parse_timestamp(iso_date):
 
 STRAVA_USER_ID = os.getenv("STRAVA_USER_ID")
 
-for activity in activities:
+# Check if we're running in a subprocess or not in a terminal
+disable_tqdm = not sys.stdout.isatty()
+
+for activity in tqdm(activities, desc="Processing activities", unit="activity", disable=disable_tqdm):
+    if disable_tqdm and len(activities) > 10:  # Only show periodic updates for large datasets
+        current = activities.index(activity) + 1
+        if current % max(1, len(activities) // 10) == 0:  # Show progress every 10%
+            print(f"Progress: {current}/{len(activities)} activities processed...")
+    
     embedding = generate_embedding(activity)
     activity_timestamp = parse_timestamp(activity["start_date"])
     

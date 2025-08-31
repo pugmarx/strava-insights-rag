@@ -72,6 +72,7 @@ def generate_sql_query(user_question):
     ## Query Rules:
     - The `embedding` column stores a 384-dimensional vector representing the activity. It is used to find similar activities.
     - Use the `<=>` operator for cosine similarity between embeddings. It returns a FLOAT, not a BOOLEAN.
+    - If using similarity in JOIN ON, always include a distance threshold (e.g., < 0.5), never mix with AND for other conditions.
     - Never use `<=>` directly in a JOIN ... ON clause unless it is wrapped in a comparison (e.g., `< 0.5`) or placed inside `ORDER BY`.
     - To find the most similar activity, use `<=>` inside an `ORDER BY` clause and `LIMIT 1`.
     - Use `timestamp` for time-based queries.
@@ -83,7 +84,7 @@ def generate_sql_query(user_question):
     - Same for month: use EXTRACT(MONTH FROM "timestamp")
     - Use double quotes for column names when needed (like "timestamp")
     - Write SQL that finds similar runs using embedding comparison, and if you use subqueries or CTEs, make sure to include all columns that are referenced later (e.g. timestamp).
-    - Just return the SQL query, no other text.
+    - Just return the SQL query, no other meta information about the query.
     
     
     ## **Examples**

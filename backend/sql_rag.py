@@ -51,13 +51,16 @@ def efficient_retrieve_activities(user_query, top_k=5, debug=False):
         'fastest run': "SELECT activity_id, activity_type, distance, duration, timestamp, 1.0 as similarity_score FROM activities WHERE activity_type = 'Run' AND distance > 1000 ORDER BY (distance/duration) DESC",
         'longest ride': "SELECT activity_id, activity_type, distance, duration, timestamp, 1.0 as similarity_score FROM activities WHERE activity_type = 'Ride' ORDER BY distance DESC",
         'recent runs': "SELECT activity_id, activity_type, distance, duration, timestamp, 1.0 as similarity_score FROM activities WHERE activity_type = 'Run' ORDER BY timestamp DESC",
+        'recent workouts': "SELECT activity_id, activity_type, distance, duration, timestamp, 1.0 as similarity_score FROM activities WHERE activity_type IN ('WeightTraining', 'Workout') AND (distance IS NULL OR distance < 1000) ORDER BY timestamp DESC",
+        'longest workout': "SELECT activity_id, activity_type, distance, duration, timestamp, 1.0 as similarity_score FROM activities WHERE activity_type IN ('WeightTraining', 'Workout') AND (distance IS NULL OR distance < 1000) ORDER BY duration DESC",
+        'best workouts': "SELECT activity_id, activity_type, distance, duration, timestamp, 1.0 as similarity_score FROM activities WHERE activity_type IN ('WeightTraining', 'Workout') AND (distance IS NULL OR distance < 1000) ORDER BY duration DESC",
     }
     
     # Check for exact matches to skip vector computation
     for phrase, sql_base in clear_superlatives.items():
         if phrase in query_lower:
             if debug:
-                print(f"🔍 DEBUG: Using optimized SQL for '{phrase}' query")
+                print(f"> DEBUG: Using optimized SQL for '{phrase}' query")
             return execute_direct_sql(sql_base, top_k, debug)
     
     # For "best" queries, determine context
@@ -68,12 +71,17 @@ def efficient_retrieve_activities(user_query, top_k=5, debug=False):
             else:
                 sql = "SELECT activity_id, activity_type, distance, duration, timestamp, 1.0 as similarity_score FROM activities WHERE activity_type = 'Run' ORDER BY distance DESC"
             if debug:
-                print(f"🔍 DEBUG: Using optimized SQL for 'best run' query")
+                print(f"> DEBUG: Using optimized SQL for 'best run' query")
+            return execute_direct_sql(sql, top_k, debug)
+        elif any(word in query_lower for word in ['workout', 'weight', 'strength', 'gym', 'training']):
+            sql = "SELECT activity_id, activity_type, distance, duration, timestamp, 1.0 as similarity_score FROM activities WHERE activity_type IN ('WeightTraining', 'Workout') AND (distance IS NULL OR distance < 1000) ORDER BY duration DESC"
+            if debug:
+                print(f"> DEBUG: Using optimized SQL for 'best workout' query")
             return execute_direct_sql(sql, top_k, debug)
     
     # Fall back to vector similarity for complex/semantic queries
     if debug:
-        print(f"🔍 DEBUG: Using vector similarity search for complex query")
+        print(f"> DEBUG: Using vector similarity search for complex query")
     return retrieve_similar_activities(user_query, top_k)
 
 def execute_direct_sql(sql_query, limit, debug=False):
@@ -89,7 +97,7 @@ def execute_direct_sql(sql_query, limit, debug=False):
     try:
         full_query = f"{sql_query} LIMIT {limit}"
         if debug:
-            print(f"🔍 DEBUG: Executing optimized query: {full_query}")
+            print(f"> DEBUG: Executing optimized query: {full_query}")
         
         cursor.execute(full_query)
         results = cursor.fetchall()
@@ -107,17 +115,19 @@ def execute_direct_sql(sql_query, limit, debug=False):
             })
         
         if debug:
-            print(f"🔍 DEBUG: Direct SQL returned {len(activities)} activities")
+            print(f"> DEBUG: Direct SQL returned {len(activities)} activities")
         
         return activities
         
     except psycopg2.Error as e:
         if debug:
-            print(f"🔍 DEBUG: Error in direct SQL: {e}")
+            print(f"> DEBUG: Error in direct SQL: {e}")
         return []
     finally:
         cursor.close()
         conn.close()
+
+
     """
     RAG Retrieval Step: Find activities similar to user query using vector similarity.
     Enhanced to handle superlative queries (longest, fastest, etc.)
@@ -160,6 +170,10 @@ def execute_direct_sql(sql_query, limit, debug=False):
             # Best ride = longest distance
             sort_column = 'distance' 
             sort_order = 'DESC'
+        elif any(word in query_lower for word in ['workout', 'weight', 'strength', 'gym', 'training']):
+            # Best workout = longest duration (most time spent training)
+            sort_column = 'duration'
+            sort_order = 'DESC'
         else:
             # Generic "best" = longest distance across all activities
             sort_column = 'distance'
@@ -191,6 +205,8 @@ def execute_direct_sql(sql_query, limit, debug=False):
                 activity_type_filter = "WHERE activity_type = 'Ride'"
             elif 'hike' in query_lower:
                 activity_type_filter = "WHERE activity_type = 'Hike'"
+            elif any(word in query_lower for word in ['workout', 'weight', 'strength', 'gym', 'training']):
+                activity_type_filter = "WHERE activity_type IN ('WeightTraining', 'Workout') AND (distance IS NULL OR distance < 1000)"
             
             # Special handling for pace-based "best" queries
             if sort_column == 'pace':
@@ -282,6 +298,8 @@ def retrieve_similar_activities(user_query, top_k=5):
             where_conditions.append("activity_type = 'Ride'")
         elif any(word in query_lower for word in ['hike', 'hiking', 'trek']):
             where_conditions.append("activity_type = 'Hike'")
+        elif any(word in query_lower for word in ['workout', 'workouts', 'weight', 'strength', 'gym', 'training']):
+            where_conditions.append("activity_type IN ('WeightTraining', 'Workout') AND (distance IS NULL OR distance < 1000)")
         
         # Filter by year if mentioned
         import re
@@ -292,7 +310,11 @@ def retrieve_similar_activities(user_query, top_k=5):
         
         # Handle superlative queries
         if any(word in query_lower for word in ['longest', 'best', 'top']) and 'similar' not in query_lower:
-            order_by = "distance DESC"
+            # For workout queries, use duration; for others use distance
+            if any(word in query_lower for word in ['workout', 'workouts', 'weight', 'strength', 'gym', 'training']):
+                order_by = "duration DESC"
+            else:
+                order_by = "distance DESC"
         elif 'fastest' in query_lower:
             where_conditions.append("distance > 1000")  # Only meaningful for actual activities
             order_by = "(distance/duration) DESC"
@@ -391,7 +413,7 @@ def generate_rag_response(user_query, context):
     """
     RAG Generation Step: Use LLM to generate response based on retrieved context.
     """
-    prompt = f"""You are a helpful assistant analyzing Strava activity data. Based on the retrieved activity information below, provide a comprehensive and helpful response to the user's question.
+    prompt = f"""You assistant which summarizes Strava activity data, based on the retrieved activity information below.
 
 Retrieved Activity Context:
 {context}
@@ -400,13 +422,14 @@ User Question: {user_query}
 
 Instructions:
 - Use the activity data provided above to answer the question
-- The data includes calculated speed (km/h) and pace (min/km) for each activity
-- When discussing "best" performances, consider multiple factors: distance, speed, pace, and context
-- For running, pace (min/km) is often more meaningful than speed
-- Be conversational and helpful with specific details
+- ALWAYS use the exact activity_type shown in the data (WeightTraining, Workout, Run, Ride, etc.)
+- For WeightTraining and Workout activities, focus on duration as the main performance metric
+- For running activities, pace (min/km) is often more meaningful than speed
+- For cycling activities, consider both distance and speed
 - Include dates, distances, and performance metrics in your analysis
 - If comparing activities across time periods, highlight the differences
 - Don't mention similarity scores or technical details about retrieval
+- Enlist the qualifying activities as bullets and prefix 'Ride' or 'Run' or 'Hike', according to the activity
 
 Response:"""
     
@@ -429,19 +452,19 @@ def handle_rag_query(user_query, debug=False):
     Let the LLM interpret what "best" means from the retrieved context.
     """
     if debug:
-        print(f"\n🔍 DEBUG: Processing query: {user_query}")
+        print(f"\n> DEBUG: Processing query: {user_query}")
     
     # Step 1: Simple vector similarity retrieval
     if debug:
-        print("🔍 DEBUG: Retrieving similar activities...")
+        print("> DEBUG: Retrieving similar activities...")
     retrieved_activities = retrieve_similar_activities(user_query, top_k=15)  # Get more for LLM to choose from
     
     if not retrieved_activities:
         return "I couldn't find any relevant activities to answer your question."
     
     if debug:
-        print(f"🔍 DEBUG: Retrieved {len(retrieved_activities)} activities")
-        print("🔍 DEBUG: Top retrieved activities:")
+        print(f"> DEBUG: Retrieved {len(retrieved_activities)} activities")
+        print("> DEBUG: Top retrieved activities:")
         for i, activity in enumerate(retrieved_activities[:5], 1):
             distance_km = activity['distance'] / 1000 if activity['distance'] else 0
             timestamp = activity['timestamp']
@@ -450,16 +473,16 @@ def handle_rag_query(user_query, debug=False):
             print(f"   {i}. {activity['activity_type']}: {distance_km:.1f}km on {timestamp.strftime('%Y-%m-%d')} (similarity: {activity['similarity_score']:.3f})")
         
         # Show database stats
-        debug_all_activities()
+        # debug_all_activities()
     
     # Step 2: Build context from retrieved activities
     if debug:
-        print("🔍 DEBUG: Building context...")
+        print("> DEBUG: Building context...")
     context = build_context(retrieved_activities)
     
     # Step 3: Generate response using LLM with context
     if debug:
-        print("🔍 DEBUG: Generating response...")
+        print("> DEBUG: Generating response...")
     response = generate_rag_response(user_query, context)
     
     return response
@@ -500,13 +523,13 @@ def debug_all_activities():
     """
     conn = connect_db()
     if not conn:
-        print("🔍 DEBUG: Could not connect to database")
+        print("> DEBUG: Could not connect to database")
         return
     
     cursor = conn.cursor()
     
     try:
-        print("\n🔍 DEBUG: Querying database statistics...")
+        print("\n> DEBUG: Querying database statistics...")
         
         # Get total count by activity type
         cursor.execute("""
@@ -519,7 +542,7 @@ def debug_all_activities():
         """)
         
         stats = cursor.fetchall()
-        print("\n🔍 DEBUG: Database Activity Statistics:")
+        print("\n> DEBUG: Database Activity Statistics:")
         print("   Type      | Count | Min(km) | Max(km) | Avg(km)")
         print("   ----------|-------|---------|---------|--------")
         for row in stats:
@@ -535,31 +558,31 @@ def debug_all_activities():
         """)
         
         longest_runs = cursor.fetchall()
-        print(f"\n🔍 DEBUG: Top 5 Longest Runs in Database:")
+        print(f"\n> DEBUG: Top 5 Longest Runs in Database:")
         for i, run in enumerate(longest_runs, 1):
             print(f"   {i}. {run[1]:.2f}km on {run[2]} (ID: {run[0]})")
             
         # Check total number of activities
         cursor.execute("SELECT COUNT(*) FROM activities")
         total_count = cursor.fetchone()[0]
-        print(f"\n🔍 DEBUG: Total activities in database: {total_count}")
+        print(f"\n> DEBUG: Total activities in database: {total_count}")
             
     except psycopg2.Error as e:
-        print(f"🔍 DEBUG: Error getting stats: {e}")
+        print(f"> DEBUG: Error getting stats: {e}")
     finally:
         cursor.close()
         conn.close()
 
-# Test the RAG system
-test_queries = [
-    "What were my best ride performances in 2025?",
-    # "Show me activities similar to my morning runs",
-    # "How did my cycling improve over time?"
-]
+# # Test the RAG system
+# test_queries = [
+#     "What are my best rides in 2022?",
+#     # "Show me activities similar to my morning runs",
+#     # "How did my cycling improve over time?"
+# ]
 
-for query in test_queries:
-    print(f"\n{'='*50}")
-    print(f"Query: {query}")
-    print(f"{'='*50}")
-    response = handle_rag_query(query, debug=True)
-    print(response)
+# for query in test_queries:
+#     print(f"\n{'='*50}")
+#     print(f"Query: {query}")
+#     print(f"{'='*50}")
+#     response = handle_rag_query(query, debug=True)
+#     print(response)

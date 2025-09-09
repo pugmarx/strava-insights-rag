@@ -5,30 +5,102 @@
   <title>Strava Activity Query</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 2rem;
-      background-color: #f4f4f4;
-    }
-    h1 {
+      background: linear-gradient(135deg, #1e3c32 0%, #2d5016 100%);
+      min-height: 100vh;
       color: #333;
     }
-    #questionInput {
-      width: 60%;
-      padding: 10px;
-      font-size: 16px;
     }
-    #submitButton, #voiceButton {
-      padding: 10px 20px;
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 15px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    h1 {
+      color: #2d5016;
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 2.5rem;
+      font-weight: 600;
+    }
+    #questionInput {
+      width: 70%;
+      padding: 15px 20px;
       font-size: 16px;
-      margin-left: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 25px;
+      outline: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    #questionInput:focus {
+      border-color: #2d5016;
+      box-shadow: 0 0 15px rgba(45, 80, 22, 0.3);
+    }
+    #submitButton {
+      padding: 15px 25px;
+      font-size: 18px;
+      margin-left: 15px;
       cursor: pointer;
+      background: linear-gradient(45deg, #1e3c32, #2d5016);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      transition: all 0.3s ease;
+      font-weight: bold;
+      box-shadow: 0 4px 10px rgba(45, 80, 22, 0.3);
+    }
+    #submitButton:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(45, 80, 22, 0.4);
     }
     #responseBox {
       margin-top: 2rem;
       background: #fff;
+      padding: 0;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .approach-selector {
+      margin-bottom: 1.5rem;
       padding: 1rem;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      background: #f8f9fa;
+      border-radius: 10px;
+      border: 1px solid #e9ecef;
+    }
+    .approach-selector label {
+      margin-right: 2rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.3s ease;
+    }
+    .approach-selector label:hover {
+      color: #2d5016;
+    }
+    .approach-selector input[type="radio"] {
+      margin-right: 0.5rem;
+      transform: scale(1.2);
+    }
+    .examples-box {
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #e8f4f8 0%, #f0f8ff 100%);
+      border-radius: 12px;
+      border-left: 4px solid #007acc;
+    }
+    .examples-box ul {
+      margin: 0.8rem 0;
+      padding-left: 1.5rem;
+    }
+    .examples-box li {
+      margin: 0.5rem 0;
+      font-style: italic;
+      color: #555;
     }
     table {
       margin-top: 1rem;
@@ -49,21 +121,52 @@
       margin: 0.5rem 0;
       border-radius: 4px;
     }
-    #transcript {
-      font-style: italic;
-      margin-top: 10px;
-      color: #555;
+    
+    .loading-dots::after {
+      content: '';
+      animation: loading-dots 1.5s infinite;
+    }
+    
+    @keyframes loading-dots {
+      0% { content: ''; }
+      25% { content: '.'; }
+      50% { content: '..'; }
+      75% { content: '...'; }
+      100% { content: ''; }
     }
   </style>
 </head>
 <body>
-  <h1>Ask about your activities</h1>
-  <input type="text" id="questionInput" placeholder="e.g. Which activity did I do most in March?">
-  <button id="submitButton">→</button>
-  <button id="voiceButton" onclick="startVoiceRecognition()">🎙️</button>
-  <p id="transcript"></p>
+  <div class="container">
+    <h1>Strava Activity Assistant</h1>
+    
+    <div style="margin-bottom: 1.5rem;">
+      <input type="text" id="questionInput" placeholder="e.g. Tell me about my best running activities, or What was my longest bike ride?">
+      <button id="submitButton">Ask</button>
+    </div>
+    
+    <div class="approach-selector">
+      <strong>🔧 Analysis Mode:</strong><br><br>
+      <label>
+        <input type="radio" name="approach" value="rag" checked> RAG (Semantic Search)
+      </label>
+      <label>
+        <input type="radio" name="approach" value="hybrid"> Hybrid (RAG + SQL)
+      </label>
+    </div>
+    
+    <div class="examples-box">
+      <strong>Try asking:</strong>
+      <ul>
+        <li>"Tell me about my best running activities"</li>
+        <li>"What was my longest bike ride?"</li>
+        <li>"Show me activities similar to my hardest workout"</li>
+        <li>"How many rides did I do this year?" (better with Hybrid)</li>
+      </ul>
+    </div>
 
-  <div id="responseBox"></div>
+    <div id="responseBox"></div>
+  </div>
 
   <script>
     document.getElementById("submitButton").addEventListener("click", () => {
@@ -71,17 +174,55 @@
       sendQuery(question);
     });
 
-    function sendQuery(question) {
-      const responseBox = document.getElementById("responseBox");
+    // Add Enter key support for the input field
+    document.getElementById("questionInput").addEventListener("keypress", (event) => {
+      if (event.key === "Enter") {
+        const question = document.getElementById("questionInput").value;
+        sendQuery(question);
+      }
+    });
 
-      fetch("http://localhost:5000/query", {
+    function sendQuery(question) {
+      const approach = document.querySelector('input[name="approach"]:checked').value;
+      const endpoint = approach === 'hybrid' ? '/hybrid-query' : '/query';
+      const responseBox = document.getElementById("responseBox");
+      
+      responseBox.innerHTML = `
+        <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #1e3c32 0%, #2d5016 100%); color: white; border-radius: 12px;">
+          <div style="font-size: 18px; font-weight: bold;">Analyzing your activities<span class="loading-dots"></span></div>
+          <div style="font-size: 14px; margin-top: 0.5rem; opacity: 0.9;">Using ${approach.toUpperCase()} approach</div>
+        </div>
+      `;
+
+      fetch(`http://localhost:5000${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question })
       })
       .then(response => response.json())
       .then(data => {
-        if (data.sql_query) {
+        if (data.response) {
+          // Handle RAG response format with enhanced icons and styling
+          const processedResponse = addActivityIcons(data.response);
+          
+          responseBox.innerHTML = `
+            <div style="margin-bottom: 1rem; padding: 0.8rem; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #2d5016;">
+              <strong>Question:</strong> ${data.question}
+            </div>
+            <div style="margin-bottom: 1rem; text-align: center;">
+              <span style="background: #2d5016; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 12px; font-weight: bold;">
+                ${data.approach}
+              </span>
+            </div>
+            <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #2d5016; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                <strong style="color: #2d5016;">Response:</strong>
+              </div>
+              <div style="line-height: 1.8; font-size: 15px;">${processedResponse.replace(/\n/g, '<br>')}</div>
+            </div>
+          `;
+        } else if (data.sql_query) {
+          // Handle legacy SQL response format (if still needed)
           let formattedResults = "<table><tr>";
           if (data.results.length > 0) {
             Object.keys(data.results[0]).forEach(col => {
@@ -116,33 +257,19 @@
       });
     }
 
-    function startVoiceRecognition() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        alert("Your browser does not support voice recognition.");
-        return;
-      }
-
-      const recognition = new SpeechRecognition();
-      recognition.lang = "en-US";
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      document.getElementById("transcript").textContent = "Listening...";
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        document.getElementById("transcript").textContent = `🗣️ You said: "${transcript}"`;
-        document.getElementById("questionInput").value = transcript;
-        sendQuery(transcript);
-      };
-
-      recognition.onerror = (event) => {
-        document.getElementById("transcript").textContent = `❌ Error: ${event.error}`;
-      };
-
-      recognition.start();
+    function addActivityIcons(text) {
+      // Add icons for different activity types
+      let processedText = text
+        .replace(/\b(Ride|Cycling|Bike|ride|cycling|bike)\b/g, '🚴 $1')
+        .replace(/\b(Run|Running|run|running)\b/g, '🏃 $1')
+        .replace(/\b(Workout|workout|Weight|weight|Strength|strength|Gym|gym)\b/g, '🏋️ $1')
+        .replace(/\b(Hike|Hiking|hike|hiking|Trek|trekking)\b/g, '🥾 $1')
+        .replace(/\b(Walk|Walking|walk|walking)\b/g, '🚶 $1')
+        .replace(/\b(Swim|Swimming|swim|swimming)\b/g, '🏊 $1');
+      
+      return processedText;
     }
   </script>
+  </div>
 </body>
 </html>

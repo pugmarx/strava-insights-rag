@@ -2,68 +2,77 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Strava Activity Query</title>
+  <ti    .approach-selector {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: #073642;
+      border: 1px solid #586e75;
+      border-radius: 4px;
+      color: #93a1a1;
+    }ava Activity Query</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 2rem;
-      background: linear-gradient(135deg, #1e3c32 0%, #2d5016 100%);
+      margin: 0;
+      background: #002b36;
       min-height: 100vh;
-      color: #333;
-    }
+      color: #839496;
+      padding: 2rem;
     }
     .container {
-      max-width: 900px;
+      max-width: 1200px;
       margin: 0 auto;
-      background: white;
+      background: #073642;
       padding: 2rem;
-      border-radius: 15px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      border-radius: 8px;
+      border: 1px solid #586e75;
     }
     h1 {
-      color: #2d5016;
+      color: #93a1a1;
       text-align: center;
       margin-bottom: 2rem;
-      font-size: 2.5rem;
-      font-weight: 600;
+      font-size: 2rem;
+      font-weight: 400;
+      letter-spacing: 1px;
     }
     #questionInput {
-      width: 70%;
-      padding: 15px 20px;
+      width: 80%;
+      padding: 12px 16px;
       font-size: 16px;
-      border: 2px solid #e0e0e0;
-      border-radius: 25px;
+      background: #002b36;
+      border: 1px solid #586e75;
+      border-radius: 4px;
+      color: #93a1a1;
       outline: none;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      transition: border-color 0.2s ease;
     }
     #questionInput:focus {
-      border-color: #2d5016;
-      box-shadow: 0 0 15px rgba(45, 80, 22, 0.3);
+      border-color: #268bd2;
+    }
+    #questionInput::placeholder {
+      color: #586e75;
     }
     #submitButton {
-      padding: 15px 25px;
-      font-size: 18px;
-      margin-left: 15px;
+      padding: 12px 20px;
+      font-size: 16px;
+      margin-left: 10px;
       cursor: pointer;
-      background: linear-gradient(45deg, #1e3c32, #2d5016);
-      color: white;
+      background: #268bd2;
+      color: #fdf6e3;
       border: none;
-      border-radius: 25px;
-      transition: all 0.3s ease;
-      font-weight: bold;
-      box-shadow: 0 4px 10px rgba(45, 80, 22, 0.3);
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
+      font-weight: normal;
     }
     #submitButton:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 15px rgba(45, 80, 22, 0.4);
+      background: #2aa198;
     }
     #responseBox {
       margin-top: 2rem;
-      background: #fff;
+      background: #002b36;
       padding: 0;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      border: 1px solid #586e75;
+      border-radius: 4px;
       overflow: hidden;
     }
     .approach-selector {
@@ -89,9 +98,21 @@
     .examples-box {
       margin-bottom: 2rem;
       padding: 1.5rem;
-      background: linear-gradient(135deg, #e8f4f8 0%, #f0f8ff 100%);
-      border-radius: 12px;
-      border-left: 4px solid #007acc;
+      background: #073642;
+      border: 1px solid #586e75;
+      border-radius: 4px;
+      width: 280px;
+      flex-shrink: 0;
+      color: #93a1a1;
+    }
+    .main-content {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+    .left-panel {
+      flex: 1;
+      min-width: 0;
     }
     .examples-box ul {
       margin: 0.8rem 0;
@@ -100,26 +121,30 @@
     .examples-box li {
       margin: 0.5rem 0;
       font-style: italic;
-      color: #555;
+      color: #586e75;
     }
     table {
       margin-top: 1rem;
       border-collapse: collapse;
       width: 100%;
+      background: #073642;
     }
     th, td {
       padding: 8px 12px;
-      border: 1px solid #ccc;
+      border: 1px solid #586e75;
+      color: #93a1a1;
     }
     th {
-      background-color: #eee;
+      background-color: #002b36;
     }
     code {
       display: block;
-      background: #f0f0f0;
+      background: #073642;
       padding: 0.5rem;
       margin: 0.5rem 0;
       border-radius: 4px;
+      border: 1px solid #586e75;
+      color: #93a1a1;
     }
     
     .loading-dots::after {
@@ -140,32 +165,36 @@
   <div class="container">
     <h1>Strava Activity Assistant</h1>
     
-    <div style="margin-bottom: 1.5rem;">
-      <input type="text" id="questionInput" placeholder="e.g. Tell me about my best running activities, or What was my longest bike ride?">
-      <button id="submitButton">Ask</button>
+    <div class="main-content">
+      <div class="left-panel">
+        <div style="margin-bottom: 1.5rem;">
+          <input type="text" id="questionInput" placeholder="e.g. Tell me about my best running activities, or What was my longest bike ride?">
+          <button id="submitButton">Ask</button>
+        </div>
+        
+        <div class="approach-selector">
+          <strong>🔧 Analysis Mode:</strong><br><br>
+          <label>
+            <input type="radio" name="approach" value="rag" checked> RAG (Semantic Search)
+          </label>
+          <label>
+            <input type="radio" name="approach" value="hybrid"> Hybrid (RAG + SQL)
+          </label>
+        </div>
+        
+        <div id="responseBox"></div>
+      </div>
+      
+      <div class="examples-box">
+        <strong>Try asking:</strong>
+        <ul>
+          <li>"Tell me about my best running activities"</li>
+          <li>"What was my longest bike ride?"</li>
+          <li>"Show me activities similar to my hardest workout"</li>
+          <li>"How many rides did I do this year?" (better with Hybrid)</li>
+        </ul>
+      </div>
     </div>
-    
-    <div class="approach-selector">
-      <strong>🔧 Analysis Mode:</strong><br><br>
-      <label>
-        <input type="radio" name="approach" value="rag" checked> RAG (Semantic Search)
-      </label>
-      <label>
-        <input type="radio" name="approach" value="hybrid"> Hybrid (RAG + SQL)
-      </label>
-    </div>
-    
-    <div class="examples-box">
-      <strong>Try asking:</strong>
-      <ul>
-        <li>"Tell me about my best running activities"</li>
-        <li>"What was my longest bike ride?"</li>
-        <li>"Show me activities similar to my hardest workout"</li>
-        <li>"How many rides did I do this year?" (better with Hybrid)</li>
-      </ul>
-    </div>
-
-    <div id="responseBox"></div>
   </div>
 
   <script>

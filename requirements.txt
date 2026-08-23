@@ -13,3 +13,5 @@ scikit-learn
 pandas
 flask-cors
 tqdm
+huggingface_hub
+gunicorn

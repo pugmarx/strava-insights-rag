@@ -1,0 +1,187 @@
+<mxfile host="app.diagrams.net" modified="2026-08-23T07:30:00.000Z" agent="Mozilla/5.0" version="21.0.0" type="device">
+  <diagram id="strava-insights-architecture" name="Cloud Architecture &amp; Query Routing">
+    <mxGraphModel dx="1422" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="Strava Insights AI — Cloud Architecture &amp; Future Intelligent Query Routing" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="380" y="30" width="840" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- CONTAINER: CLIENT TIER -->
+        <mxCell id="client_box" value="CLIENT TIER (Anywhere / Any Device)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;fontStyle=1;fontSize=14;fontColor=#334155;rounded=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="100" width="300" height="380" as="geometry" />
+        </mxCell>
+        <mxCell id="client_ui" value="📱 Web &amp; Mobile UI&#xa;(frontend/index.html)&#xa;&#xa;• Natural Language Chat&#xa;• Performance Dashboards&#xa;• Direct Strava Activity Links" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FC5200;strokeColor=#E04700;fontColor=#FFFFFF;fontStyle=1;fontSize=13;shadow=1;" vertex="1" parent="client_box">
+          <mxGeometry x="30" y="60" width="240" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="strava_device" value="⌚ Athlete Wearables&#xa;(Garmin / Apple Watch / Strava App)&#xa;&#xa;Logs Runs, Rides &amp; Workouts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEDD5;strokeColor=#FB923C;fontColor=#9A3412;fontStyle=1;fontSize=12;" vertex="1" parent="client_box">
+          <mxGeometry x="30" y="220" width="240" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- CONTAINER: HUGGING FACE SPACE -->
+        <mxCell id="hf_space" value="🤗 HUGGING FACE SPACE (Free Cloud Container - 2 vCPU / 16 GB RAM)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#3B82F6;fontStyle=1;fontSize=15;fontColor=#1E40AF;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="420" y="100" width="760" height="740" as="geometry" />
+        </mxCell>
+
+        <!-- App Entry -->
+        <mxCell id="hf_server" value="🚀 FastAPI / Flask Gateway (Port 7860)&#xa;backend/app.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2563EB;strokeColor=#1D4ED8;fontColor=#FFFFFF;fontStyle=1;fontSize=13;" vertex="1" parent="hf_space">
+          <mxGeometry x="230" y="50" width="300" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- SUB-CONTAINER: FUTURE QUERY ROUTER -->
+        <mxCell id="router_box" value="🧠 FUTURE: Intelligent Query Routing Subsystem (backend/query_router.py)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontStyle=1;fontSize=13;fontColor=#92400E;rounded=1;arcSize=10;dashed=1;dashPattern=5 5;" vertex="1" parent="hf_space">
+          <mxGeometry x="30" y="140" width="700" height="350" as="geometry" />
+        </mxCell>
+
+        <mxCell id="intent_classifier" value="🚦 Intent Classifier &amp; Parser&#xa;Determines Query Strategy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDE68A;strokeColor=#D97706;fontColor=#78350F;fontStyle=1;fontSize=12;" vertex="1" parent="router_box">
+          <mxGeometry x="240" y="45" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="route_agg" value="📊 1. Math / Aggregation&#xa;Exact SUM, COUNT, AVG&#xa;(e.g. 'Total km in 2023')" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1FAE5;strokeColor=#10B981;fontColor=#065F46;fontStyle=1;fontSize=11;" vertex="1" parent="router_box">
+          <mxGeometry x="20" y="140" width="150" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="route_record" value="🏆 2. Personal Records&#xa;Superlatives &amp; Limits&#xa;(e.g. 'Fastest 10k pace')" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DBEAFE;strokeColor=#3B82F6;fontColor=#1E40AF;fontStyle=1;fontSize=11;" vertex="1" parent="router_box">
+          <mxGeometry x="190" y="140" width="150" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="route_semantic" value="🔍 3. Semantic Search&#xa;pgvector Cosine Sim&#xa;(e.g. 'Scenic hill trails')" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E8FF;strokeColor=#A855F7;fontColor=#6B21A8;fontStyle=1;fontSize=11;" vertex="1" parent="router_box">
+          <mxGeometry x="360" y="140" width="150" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="route_hybrid" value="📈 4. Hybrid Analytics&#xa;Stats + Key Examples&#xa;(e.g. '2022 vs 2023 trends')" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE7F3;strokeColor=#EC4899;fontColor=#9D174D;fontStyle=1;fontSize=11;" vertex="1" parent="router_box">
+          <mxGeometry x="530" y="140" width="150" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="context_builder" value="📋 Structured Context &amp; Metrics Builder&#xa;Synthesizes DB Rows, Units &amp; Formatted Paces" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#94A3B8;fontColor=#334155;fontStyle=1;fontSize=12;" vertex="1" parent="router_box">
+          <mxGeometry x="160" y="270" width="380" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Lower HF space modules -->
+        <mxCell id="hf_llm_client" value="🔌 Universal AI Client (backend/llm_client.py)&#xa;Hugging Face Inference API / Groq / Ollama Fallback" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3B82F6;strokeColor=#1D4ED8;fontColor=#FFFFFF;fontStyle=1;fontSize=12;" vertex="1" parent="hf_space">
+          <mxGeometry x="50" y="520" width="360" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="db_pool" value="🗄️ SSL DB Connection Pool&#xa;(backend/db_pool.py)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#10B981;strokeColor=#059669;fontColor=#FFFFFF;fontStyle=1;fontSize=12;" vertex="1" parent="hf_space">
+          <mxGeometry x="450" y="520" width="260" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="webhook_sync" value="🔄 Strava Webhook / Ingestion Worker&#xa;Auto-syncs new activities on workout complete" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEDD5;strokeColor=#F97316;fontColor=#9A3412;fontStyle=1;fontSize=12;" vertex="1" parent="hf_space">
+          <mxGeometry x="200" y="620" width="360" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- CONTAINER: CLOUD SERVICES TIER -->
+        <mxCell id="cloud_services" value="CLOUD BACKENDS &amp; EXTERNAL APIS (Free Tiers)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;fontStyle=1;fontSize=14;fontColor=#334155;rounded=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="100" width="320" height="740" as="geometry" />
+        </mxCell>
+
+        <mxCell id="hf_api_box" value="🤗 HF Serverless Inference API&#xa;&#xa;• LLM: Mistral-7B-Instruct&#xa;• Embeddings: all-MiniLM-L6-v2&#xa;(Free Developer Token)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFD21E;strokeColor=#D97706;fontColor=#1E293B;fontStyle=1;fontSize=12;shadow=1;" vertex="1" parent="cloud_services">
+          <mxGeometry x="25" y="60" width="270" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="supabase_box" value="🗄️ Supabase Cloud (Free)&#xa;&#xa;• Managed PostgreSQL 15+&#xa;• pgvector Extension&#xa;• activities Table (384-d vectors)&#xa;• SSL Encrypted Connection" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3ECF8E;strokeColor=#059669;fontColor=#FFFFFF;fontStyle=1;fontSize=12;shadow=1;" vertex="1" parent="cloud_services">
+          <mxGeometry x="25" y="240" width="270" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="strava_cloud" value="🏃 Strava Cloud API v3&#xa;&#xa;• Athlete OAuth Tokens&#xa;• Activity Streams &amp; Metadata&#xa;• Webhook Push Notifications" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FC5200;strokeColor=#C2410C;fontColor=#FFFFFF;fontStyle=1;fontSize=12;shadow=1;" vertex="1" parent="cloud_services">
+          <mxGeometry x="25" y="440" width="270" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ollama_box" value="💻 Local Ollama (Fallback)&#xa;mistral:latest on localhost&#xa;(Optional Offline Mode)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E2E8F0;strokeColor=#94A3B8;fontColor=#475569;fontStyle=1;fontSize=11;dashed=1;" vertex="1" parent="cloud_services">
+          <mxGeometry x="25" y="610" width="270" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- CONNECTORS / EDGES -->
+        <mxCell id="edge1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#FC5200;" edge="1" parent="1" source="client_ui" target="hf_server">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1_lbl" value="1. HTTPS Natural Query" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontColor=#FC5200;fontStyle=1;" vertex="1" connectable="0" parent="edge1">
+          <mxGeometry x="-0.1" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#2563EB;" edge="1" parent="1" source="hf_server" target="intent_classifier">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Router distribution edges -->
+        <mxCell id="edge_r1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;strokeColor=#10B981;" edge="1" parent="router_box" source="intent_classifier" target="route_agg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_r2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;strokeColor=#3B82F6;" edge="1" parent="router_box" source="intent_classifier" target="route_record">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_r3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;strokeColor=#A855F7;" edge="1" parent="router_box" source="intent_classifier" target="route_semantic">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_r4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;strokeColor=#EC4899;" edge="1" parent="router_box" source="intent_classifier" target="route_hybrid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Connect routes to context builder -->
+        <mxCell id="edge_cb1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;strokeColor=#64748B;" edge="1" parent="router_box" source="route_agg" target="context_builder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_cb2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;strokeColor=#64748B;" edge="1" parent="router_box" source="route_record" target="context_builder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_cb3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;strokeColor=#64748B;" edge="1" parent="router_box" source="route_semantic" target="context_builder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_cb4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;strokeColor=#64748B;" edge="1" parent="router_box" source="route_hybrid" target="context_builder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- HF Space to Cloud DB & AI -->
+        <mxCell id="edge_db" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#059669;" edge="1" parent="1" source="db_pool" target="supabase_box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_db_lbl" value="SQL &amp; Vector Cosine Queries" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontColor=#059669;fontStyle=1;" vertex="1" connectable="0" parent="edge_db">
+          <mxGeometry x="-0.2" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge_ai" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#D97706;" edge="1" parent="1" source="hf_llm_client" target="hf_api_box">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="650" />
+              <mxPoint x="400" y="870" />
+              <mxPoint x="1200" y="870" />
+              <mxPoint x="1200" y="215" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_ai_lbl" value="Serverless Text Generation (Mistral-7B)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontColor=#D97706;fontStyle=1;" vertex="1" connectable="0" parent="edge_ai">
+          <mxGeometry x="0.1" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Strava Webhook sync -->
+        <mxCell id="edge_strava_webhook" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#FC5200;dashed=1;" edge="1" parent="1" source="strava_cloud" target="webhook_sync">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_strava_lbl" value="Auto-Sync Webhook Event" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontColor=#C2410C;fontStyle=1;" vertex="1" connectable="0" parent="edge_strava_webhook">
+          <mxGeometry x="-0.1" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge_watch_strava" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;strokeColor=#FB923C;" edge="1" parent="1" source="strava_device" target="strava_cloud">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="210" y="900" />
+              <mxPoint x="1400" y="900" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

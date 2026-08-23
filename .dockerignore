@@ -1,0 +1,13 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.git
+.gitignore
+*.png
+*.log
+activities.json
+token.json
+.system_generated
+.gemini

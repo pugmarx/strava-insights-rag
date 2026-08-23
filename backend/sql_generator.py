@@ -3,7 +3,8 @@ import os
 import psycopg2
 from dotenv import load_dotenv
 from datetime import datetime
-
+from db_pool import get_pool
+from llm_client import LLMClient
 
 # Load environment variables
 load_dotenv()
@@ -14,42 +15,38 @@ POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT")
+POSTGRES_SSLMODE = os.getenv("POSTGRES_SSLMODE", "prefer")
 
-# Ollama API details
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "mistral"  # Change model here
+# Initialize LLM Client
+llm_client = LLMClient()
 
 # Database connection
 def connect_db():
-    """Establish a connection to PostgreSQL database."""
+    """Establish a connection to PostgreSQL database using connection pool or direct fallback."""
+    pool = get_pool()
+    if pool:
+        try:
+            return pool.getconn()
+        except Exception:
+            pass
     try:
         conn = psycopg2.connect(
             dbname=POSTGRES_DB,
             user=POSTGRES_USER,
             password=POSTGRES_PASSWORD,
             host=POSTGRES_HOST,
-            port=POSTGRES_PORT
+            port=POSTGRES_PORT,
+            sslmode=POSTGRES_SSLMODE
         )
         return conn
     except psycopg2.Error as e:
         print(f"Database connection error: {e}")
         return None
 
-# Ollama Query Function
+# LLM Query Function
 def query_ollama(prompt):
-    """Send a query to the local Ollama LLM and return the response."""
-    payload = {
-        "model": MODEL_NAME,
-        "prompt": prompt,
-        "stream": False
-    }
-    
-    try:
-        response = requests.post(OLLAMA_URL, json=payload)
-        response.raise_for_status()
-        return response.json().get("response", "No response received")
-    except requests.exceptions.RequestException as e:
-        return f"Error querying Ollama: {e}"
+    """Send a query to the LLM (Hugging Face / Groq / Ollama) and return the response."""
+    return llm_client.generate(prompt)
 
 # Generate SQL Query using LLM
 def generate_sql_query(user_question):

@@ -1,7 +1,14 @@
+import os
+import sys
+
+# Ensure backend directory is in python path
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from sql_rag import handle_rag_query, hybrid_query_handler
-import os
 
 
 # Initialize Flask app
@@ -79,4 +86,5 @@ def hybrid_query():
         return jsonify({"error": "Failed to process query"}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)

@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from datetime import datetime
 from sentence_transformers import SentenceTransformer
 import numpy as np
+from db_pool import get_pool
+from llm_client import LLMClient
 
 # Load environment variables
 load_dotenv()
@@ -15,23 +17,30 @@ POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT")
+POSTGRES_SSLMODE = os.getenv("POSTGRES_SSLMODE", "prefer")
 
-# Ollama API details
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "mistral"
+# Initialize LLM Client (Hugging Face / Groq / Ollama)
+llm_client = LLMClient()
 
 # Initialize sentence transformer model
 model = SentenceTransformer('all-MiniLM-L6-v2')  # Same model used in Activity Persister
 
 def connect_db():
-    """Establish a connection to PostgreSQL database."""
+    """Establish a connection to PostgreSQL database using connection pool or direct fallback."""
+    pool = get_pool()
+    if pool:
+        try:
+            return pool.getconn()
+        except Exception:
+            pass
     try:
         conn = psycopg2.connect(
             dbname=POSTGRES_DB,
             user=POSTGRES_USER,
             password=POSTGRES_PASSWORD,
             host=POSTGRES_HOST,
-            port=POSTGRES_PORT
+            port=POSTGRES_PORT,
+            sslmode=POSTGRES_SSLMODE
         )
         return conn
     except psycopg2.Error as e:
@@ -433,18 +442,7 @@ Instructions:
 
 Response:"""
     
-    payload = {
-        "model": MODEL_NAME,
-        "prompt": prompt,
-        "stream": False
-    }
-    
-    try:
-        response = requests.post(OLLAMA_URL, json=payload)
-        response.raise_for_status()
-        return response.json().get("response", "No response received")
-    except requests.exceptions.RequestException as e:
-        return f"Error generating response: {e}"
+    return llm_client.generate(prompt)
 
 def handle_rag_query(user_query, debug=False):
     """

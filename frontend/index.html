@@ -2,14 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <ti    .approach-selector {
-      margin-bottom: 1.5rem;
-      padding: 1rem;
-      background: #073642;
-      border: 1px solid #586e75;
-      border-radius: 4px;
-      color: #93a1a1;
-    }ava Activity Query</title>
+  <title>Strava Activity Assistant</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -223,7 +216,7 @@
         </div>
       `;
 
-      fetch(`http://localhost:5000${endpoint}`, {
+      fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question })

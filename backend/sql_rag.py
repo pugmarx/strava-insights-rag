@@ -3,8 +3,7 @@ import os
 import psycopg2
 from dotenv import load_dotenv
 from datetime import datetime
-from sentence_transformers import SentenceTransformer
-import numpy as np
+from fastembed import TextEmbedding
 from db_pool import get_pool
 from llm_client import LLMClient
 
@@ -22,8 +21,13 @@ POSTGRES_SSLMODE = os.getenv("POSTGRES_SSLMODE", "prefer")
 # Initialize LLM Client (Hugging Face / Groq / Ollama)
 llm_client = LLMClient()
 
-# Initialize sentence transformer model
-model = SentenceTransformer('all-MiniLM-L6-v2')  # Same model used in Activity Persister
+# Initialize fastembed model (low memory, ONNX runtime)
+model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+def compute_embedding(text):
+    """Generate vector embedding as a Python list using fastembed."""
+    emb = list(model.embed([text]))[0]
+    return emb.tolist() if hasattr(emb, "tolist") else list(emb)
 
 def connect_db():
     """Establish a connection to PostgreSQL database using connection pool or direct fallback."""
@@ -142,7 +146,7 @@ def execute_direct_sql(sql_query, limit, debug=False):
     Enhanced to handle superlative queries (longest, fastest, etc.)
     """
     # Convert user query to embedding
-    query_embedding = model.encode(user_query)
+    query_embedding = compute_embedding(user_query)
     
     # Check if this is a superlative query that needs special handling
     superlative_keywords = {
@@ -206,7 +210,7 @@ def execute_direct_sql(sql_query, limit, debug=False):
             # For superlative queries, get top activities by the relevant metric
             # Filter by activity type FIRST, then sort (more efficient)
             activity_type_filter = ""
-            filter_params = [query_embedding.tolist()]
+            filter_params = [query_embedding]
             
             if 'run' in query_lower:
                 activity_type_filter = "WHERE activity_type = 'Run'"
@@ -241,14 +245,13 @@ def execute_direct_sql(sql_query, limit, debug=False):
                 """, (filter_params[0], top_k))
         else:
             # Regular vector similarity search
-            embedding_list = query_embedding.tolist()
             cursor.execute("""
                 SELECT activity_id, activity_type, distance, duration, timestamp,
                        1 - (embedding <=> %s::vector) as similarity_score
                 FROM activities 
                 ORDER BY embedding <=> %s::vector 
                 LIMIT %s
-            """, (embedding_list, embedding_list, top_k))
+            """, (query_embedding, query_embedding, top_k))
         
         results = cursor.fetchall()
         
@@ -277,7 +280,7 @@ def retrieve_similar_activities(user_query, top_k=5):
     """
     Smart RAG Retrieval: Handle different query types appropriately.
     """
-    query_embedding = model.encode(user_query)
+    query_embedding = compute_embedding(user_query)
     query_lower = user_query.lower()
     
     conn = connect_db()
@@ -287,7 +290,7 @@ def retrieve_similar_activities(user_query, top_k=5):
     cursor = conn.cursor()
     
     try:
-        embedding_list = query_embedding.tolist()
+        embedding_list = query_embedding
         
         # Detect query patterns and build appropriate SQL
         base_select = """

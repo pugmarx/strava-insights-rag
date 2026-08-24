@@ -2,7 +2,7 @@ import json
 import psycopg2
 import os
 import sys
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 from datetime import datetime
 from tqdm import tqdm
 
@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Load the embedding model
-model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+# Load the embedding model (fastembed ONNX)
+model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 # Load Strava activities
 with open("activities.json", "r") as file:
@@ -31,8 +31,8 @@ cur = conn.cursor()
 # Function to convert activity into an embedding
 def generate_embedding(activity):
     text = f"{activity['name']} {activity['type']} {activity['distance']} meters in {activity['elapsed_time']} seconds"
-    # Generate embedding using the model
-    return model.encode(text).tolist()
+    # Generate embedding using fastembed
+    return list(model.embed([text]))[0].tolist()
 
 # Function to convert ISO 8601 to PostgreSQL timestamp
 def parse_timestamp(iso_date):

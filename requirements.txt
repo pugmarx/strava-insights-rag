@@ -1,7 +1,6 @@
 fastapi 
 uvicorn 
 psycopg2-binary 
-coremltools 
 sentence-transformers 
 pgvector
 requests

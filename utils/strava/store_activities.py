@@ -25,6 +25,7 @@ conn = psycopg2.connect(
     password=os.getenv("POSTGRES_PASSWORD"),
     host=os.getenv("POSTGRES_HOST"),
     port=os.getenv("POSTGRES_PORT"),
+    sslmode=os.getenv("POSTGRES_SSLMODE", "require")
 )
 cur = conn.cursor()
 

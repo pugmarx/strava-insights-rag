@@ -1,6 +1,9 @@
 
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- Create the activities table
-CREATE TABLE activities (
+CREATE TABLE IF NOT EXISTS activities (
     id SERIAL PRIMARY KEY,
     activity_id BIGINT UNIQUE,  -- Unique ID from Strava
     user_id VARCHAR(50),
@@ -9,4 +12,15 @@ CREATE TABLE activities (
     duration INT,
     timestamp TIMESTAMP,
     embedding vector(384)  -- Vector storage for embeddings
+);
+
+-- Create table to persist Strava OAuth tokens across container restarts
+CREATE TABLE IF NOT EXISTS strava_tokens (
+    id INT PRIMARY KEY DEFAULT 1,
+    athlete_id VARCHAR(50),
+    access_token TEXT,
+    refresh_token TEXT,
+    expires_at BIGINT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT single_row CHECK (id = 1)
 );

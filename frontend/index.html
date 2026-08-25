@@ -156,7 +156,15 @@
 </head>
 <body>
   <div class="container">
-    <h1>Strava Activity Assistant</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+      <h1 style="margin: 0;">Strava Activity Assistant</h1>
+      <div>
+        <button id="syncButton" style="padding: 10px 16px; font-size: 14px; cursor: pointer; background: #2aa198; color: #fdf6e3; border: none; border-radius: 4px; transition: background-color 0.2s ease;">
+          🔄 Sync Strava
+        </button>
+        <span id="syncStatusText" style="margin-left: 10px; font-size: 13px; color: #839496;"></span>
+      </div>
+    </div>
     
     <div class="main-content">
       <div class="left-panel">
@@ -186,6 +194,10 @@
           <li>"Show me activities similar to my hardest workout"</li>
           <li>"How many rides did I do this year?" (better with Hybrid)</li>
         </ul>
+        <div id="dbStats" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #586e75; font-size: 13px;">
+          <strong>📊 Database:</strong><br>
+          <span id="dbTotal">Loading stats...</span>
+        </div>
       </div>
     </div>
   </div>
@@ -291,6 +303,59 @@
       
       return processedText;
     }
+
+    // Sync button logic
+    const syncButton = document.getElementById("syncButton");
+    const syncStatusText = document.getElementById("syncStatusText");
+    const dbTotal = document.getElementById("dbTotal");
+
+    function fetchDbStats() {
+      fetch('/api/sync/status')
+        .then(res => res.json())
+        .then(data => {
+          if (data.total_activities !== undefined) {
+            const dateStr = data.latest_timestamp ? new Date(data.latest_timestamp).toLocaleDateString() : 'None';
+            dbTotal.innerHTML = `Total: <strong>${data.total_activities}</strong> activities<br>Latest: <strong>${dateStr}</strong>`;
+          } else {
+            dbTotal.innerText = 'Unable to load stats';
+          }
+        })
+        .catch(() => {
+          dbTotal.innerText = 'Unable to load stats';
+        });
+    }
+
+    syncButton.addEventListener("click", () => {
+      syncButton.disabled = true;
+      syncButton.innerText = "⏳ Syncing...";
+      syncStatusText.innerText = "Connecting to Strava...";
+
+      fetch('/api/sync', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 50 })
+      })
+      .then(res => res.json())
+      .then(data => {
+        syncButton.disabled = false;
+        syncButton.innerText = "🔄 Sync Strava";
+        if (data.status === "success") {
+          syncStatusText.innerText = `✅ Synced ${data.synced_count} activities!`;
+          fetchDbStats();
+          setTimeout(() => { syncStatusText.innerText = ""; }, 5000);
+        } else {
+          syncStatusText.innerText = `❌ Sync failed: ${data.error || 'Unknown error'}`;
+        }
+      })
+      .catch(err => {
+        syncButton.disabled = false;
+        syncButton.innerText = "🔄 Sync Strava";
+        syncStatusText.innerText = `❌ Error: ${err.message}`;
+      });
+    });
+
+    // Initial stats load
+    fetchDbStats();
   </script>
   </div>
 </body>

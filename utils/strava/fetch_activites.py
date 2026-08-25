@@ -81,7 +81,13 @@ def fetch_activities(access_token, per_page=100, max_pages=10):
             break
 
         if res.status_code != 200:
-            print(f"ERROR: Error fetching page {page}: {res.status_code}")
+            print(f"ERROR: Error fetching page {page}: HTTP {res.status_code}")
+            print(f"  Response: {res.text}")
+            if res.status_code == 403:
+                print("\n⚠️  HTTP 403 Forbidden: Your Strava access token is missing activity permissions ('activity:read_all').")
+                print("To fix:")
+                print("1. Re-run 'python utils/strava/first_auth.py'")
+                print("2. When the Strava webpage opens, make sure to check the box: 'View data about your activities'")
             break
 
         page_data = res.json()

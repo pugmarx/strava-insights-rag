@@ -64,11 +64,21 @@ def fetch_activities(access_token, per_page=100, max_pages=10):
     all_activities = []
 
     for page in range(1, max_pages + 1):
-        print(f"Fetching page {page}...")
+        print(f"Fetching page {page} (up to {per_page} activities)...")
         res = requests.get(ACTIVITIES_URL, headers=headers, params={
             "per_page": per_page,
             "page": page
         })
+
+        # Strava rate limit headers: 'X-RateLimit-Usage' (e.g. '10,50')
+        usage = res.headers.get("X-RateLimit-Usage")
+        limit = res.headers.get("X-RateLimit-Limit")
+        if usage and limit:
+            print(f"  [Rate Limit: {usage} used out of {limit}]")
+
+        if res.status_code == 429:
+            print("⚠️ Rate limit exceeded (429). Stopping fetch.")
+            break
 
         if res.status_code != 200:
             print(f"ERROR: Error fetching page {page}: {res.status_code}")
@@ -76,9 +86,11 @@ def fetch_activities(access_token, per_page=100, max_pages=10):
 
         page_data = res.json()
         if not page_data:
+            print(f"  No more activities on page {page}.")
             break
 
         all_activities.extend(page_data)
+        time.sleep(0.5)  # Gentle 500ms pause between pages
 
     print(f">> Total activities fetched: {len(all_activities)}")
     return all_activities

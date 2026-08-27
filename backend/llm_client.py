@@ -13,21 +13,32 @@ class LLMClient:
     Groq, OpenAI-compatible APIs, and local Ollama fallback.
     """
     def __init__(self):
-        self.provider = os.getenv("LLM_PROVIDER", "huggingface").lower()
-        self.hf_token = os.getenv("HF_TOKEN")
-        self.hf_model = os.getenv("HF_MODEL", "mistralai/Mistral-7B-Instruct-v0.3")
-        self.ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-        self.ollama_model = os.getenv("OLLAMA_MODEL", "mistral")
-        self.groq_api_key = os.getenv("GROQ_API_KEY")
-        self.groq_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        def _clean_env(key, default=""):
+            val = os.getenv(key, default)
+            if val is None:
+                return default
+            return val.strip().strip("\"'")
+
+        self.provider = _clean_env("LLM_PROVIDER", "huggingface").lower()
+        self.hf_token = _clean_env("HF_TOKEN", "")
+        self.hf_model = _clean_env("HF_MODEL", "Qwen/Qwen2.5-72B-Instruct")
+        self.ollama_url = _clean_env("OLLAMA_URL", "http://localhost:11434/api/generate")
+        self.ollama_model = _clean_env("OLLAMA_MODEL", "mistral")
+        self.groq_api_key = _clean_env("GROQ_API_KEY", "")
+        self.groq_model = _clean_env("GROQ_MODEL", "llama-3.3-70b-versatile")
+        
+        try:
+            self.max_tokens = int(_clean_env("MAX_TOKENS", "2048"))
+        except ValueError:
+            self.max_tokens = 2048
         
         self.hf_client = None
         if self.provider == "huggingface" and self.hf_token:
             try:
                 from huggingface_hub import InferenceClient
-                self.hf_client = InferenceClient(model=self.hf_model, token=self.hf_token)
+                self.hf_client = InferenceClient(token=self.hf_token)
             except ImportError:
-                print("Warning: huggingface_hub not installed. Run 'pip install huggingface_hub'")
+                pass
 
     def generate(self, prompt: str, system_instruction: str = None) -> str:
         """Generate a response using the configured provider with automatic fallbacks."""
@@ -41,55 +52,77 @@ class LLMClient:
     def _call_huggingface(self, prompt: str, system_instruction: str = None) -> str:
         """Call Hugging Face Serverless Inference API."""
         if not self.hf_token:
-            print("HF_TOKEN missing in environment, falling back to Ollama...")
-            return self._call_ollama(prompt, system_instruction)
+            return "Error: HF_TOKEN is not set in environment or .env file."
 
-        try:
+        messages = []
+        if system_instruction:
+            messages.append({"role": "system", "content": system_instruction})
+        messages.append({"role": "user", "content": prompt})
+
+        # Candidate models supported on Hugging Face Serverless Inference
+        candidate_models = [self.hf_model]
+        for fallback in ["Qwen/Qwen2.5-72B-Instruct", "meta-llama/Llama-3.2-3B-Instruct", "meta-llama/Llama-3.3-70B-Instruct"]:
+            if fallback not in candidate_models:
+                candidate_models.append(fallback)
+
+        errors = []
+        for model_id in candidate_models:
+            # 1. Try huggingface_hub client chat completions
             if self.hf_client:
-                messages = []
-                if system_instruction:
-                    messages.append({"role": "system", "content": system_instruction})
-                messages.append({"role": "user", "content": prompt})
+                try:
+                    if hasattr(self.hf_client, "chat") and hasattr(self.hf_client.chat, "completions"):
+                        resp = self.hf_client.chat.completions.create(
+                            model=model_id,
+                            messages=messages,
+                            max_tokens=self.max_tokens,
+                            temperature=0.3
+                        )
+                        if resp.choices and len(resp.choices) > 0:
+                            return resp.choices[0].message.content or ""
+                except Exception as e:
+                    errors.append(f"{model_id} (chat.completions): {e}")
 
                 try:
-                    # Try chat completion first
                     response = self.hf_client.chat_completion(
+                        model=model_id,
                         messages=messages,
-                        max_tokens=600,
+                        max_tokens=self.max_tokens,
                         temperature=0.3
                     )
-                    return response.choices[0].message.content
-                except Exception:
-                    # Fallback to direct text generation
-                    full_prompt = f"{system_instruction}\n\n{prompt}" if system_instruction else prompt
-                    return self.hf_client.text_generation(
-                        full_prompt,
-                        max_new_tokens=600,
-                        temperature=0.3
-                    )
-            else:
-                # Direct REST API fallback without SDK
-                headers = {"Authorization": f"Bearer {self.hf_token}"}
-                api_url = f"https://api-inference.huggingface.co/models/{self.hf_model}"
-                full_prompt = f"{system_instruction}\n\n{prompt}" if system_instruction else prompt
+                    if response.choices and len(response.choices) > 0:
+                        return response.choices[0].message.content or ""
+                except Exception as e:
+                    errors.append(f"{model_id} (chat_completion): {e}")
+
+            # 2. Try Hugging Face Router endpoint
+            headers = {
+                "Authorization": f"Bearer {self.hf_token}",
+                "Content-Type": "application/json"
+            }
+            try:
+                router_url = "https://router.huggingface.co/hf-inference/v1/chat/completions"
                 payload = {
-                    "inputs": full_prompt,
-                    "parameters": {"max_new_tokens": 600, "temperature": 0.3, "return_full_text": False}
+                    "model": model_id,
+                    "messages": messages,
+                    "max_tokens": self.max_tokens,
+                    "temperature": 0.3
                 }
-                res = requests.post(api_url, headers=headers, json=payload, timeout=30)
-                res.raise_for_status()
-                data = res.json()
-                if isinstance(data, list) and len(data) > 0:
-                    return data[0].get("generated_text", "")
-                return str(data)
-        except Exception as e:
-            print(f"Hugging Face inference error: {e}. Falling back to Ollama...")
-            return self._call_ollama(prompt, system_instruction)
+                res = requests.post(router_url, headers=headers, json=payload, timeout=30)
+                if res.status_code == 200:
+                    data = res.json()
+                    if "choices" in data and len(data["choices"]) > 0:
+                        return data["choices"][0]["message"]["content"]
+                else:
+                    errors.append(f"HF Router {model_id} ({res.status_code}): {res.text}")
+            except Exception as e:
+                errors.append(f"HF Router {model_id} failed: {e}")
+
+        return f"Error connecting to Hugging Face API: {' | '.join(errors)}"
 
     def _call_groq(self, prompt: str, system_instruction: str = None) -> str:
         """Call Groq Cloud API."""
         if not self.groq_api_key:
-            return self._call_ollama(prompt, system_instruction)
+            return "Error: GROQ_API_KEY is not set in environment or .env file."
         try:
             headers = {
                 "Authorization": f"Bearer {self.groq_api_key}",
@@ -104,15 +137,14 @@ class LLMClient:
                 "model": self.groq_model,
                 "messages": messages,
                 "temperature": 0.3,
-                "max_tokens": 600
+                "max_tokens": self.max_tokens
             }
             res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=20)
             res.raise_for_status()
             data = res.json()
             return data["choices"][0]["message"]["content"]
         except Exception as e:
-            print(f"Groq API error: {e}. Falling back to Ollama...")
-            return self._call_ollama(prompt, system_instruction)
+            return f"Error connecting to Groq API: {e}"
 
     def _call_ollama(self, prompt: str, system_instruction: str = None) -> str:
         """Call local Ollama instance."""
@@ -127,4 +159,4 @@ class LLMClient:
             response.raise_for_status()
             return response.json().get("response", "No response received")
         except Exception as e:
-            return f"Error connecting to AI service (Ollama/Cloud): {e}"
+            return f"Error connecting to Ollama: {e}"

@@ -2,333 +2,763 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Strava Activity Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strava Activity Insights</title>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    :root {
+      --bg-base: #0b0f17;
+      --bg-surface: #141b26;
+      --bg-surface-hover: #1c2636;
+      --bg-surface-elevated: #1f2a3c;
+      --border-subtle: #243042;
+      --border-focus: #3b82f6;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent: #fc4c02;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
       margin: 0;
-      background: #002b36;
-      min-height: 100vh;
-      color: #839496;
-      padding: 2rem;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      background: #073642;
-      padding: 2rem;
-      border-radius: 8px;
-      border: 1px solid #586e75;
-    }
-    h1 {
-      color: #93a1a1;
-      text-align: center;
-      margin-bottom: 2rem;
-      font-size: 2rem;
-      font-weight: 400;
-      letter-spacing: 1px;
-    }
-    #questionInput {
-      width: 80%;
-      padding: 12px 16px;
-      font-size: 16px;
-      background: #002b36;
-      border: 1px solid #586e75;
-      border-radius: 4px;
-      color: #93a1a1;
-      outline: none;
-      transition: border-color 0.2s ease;
-    }
-    #questionInput:focus {
-      border-color: #268bd2;
-    }
-    #questionInput::placeholder {
-      color: #586e75;
-    }
-    #submitButton {
-      padding: 12px 20px;
-      font-size: 16px;
-      margin-left: 10px;
-      cursor: pointer;
-      background: #268bd2;
-      color: #fdf6e3;
-      border: none;
-      border-radius: 4px;
-      transition: background-color 0.2s ease;
-      font-weight: normal;
-    }
-    #submitButton:hover {
-      background: #2aa198;
-    }
-    #responseBox {
-      margin-top: 2rem;
-      background: #002b36;
       padding: 0;
-      border: 1px solid #586e75;
-      border-radius: 4px;
-      overflow: hidden;
     }
-    .approach-selector {
-      margin-bottom: 1.5rem;
-      padding: 1rem;
-      background: #f8f9fa;
-      border-radius: 10px;
-      border: 1px solid #e9ecef;
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      min-height: 100vh;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      padding: 2rem 1.5rem;
     }
-    .approach-selector label {
-      margin-right: 2rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: color 0.3s ease;
-    }
-    .approach-selector label:hover {
-      color: #2d5016;
-    }
-    .approach-selector input[type="radio"] {
-      margin-right: 0.5rem;
-      transform: scale(1.2);
-    }
-    .examples-box {
-      margin-bottom: 2rem;
-      padding: 1.5rem;
-      background: #073642;
-      border: 1px solid #586e75;
-      border-radius: 4px;
-      width: 280px;
-      flex-shrink: 0;
-      color: #93a1a1;
-    }
-    .main-content {
+
+    .app-layout {
+      max-width: 1100px;
+      margin: 0 auto;
       display: flex;
-      gap: 2rem;
-      align-items: flex-start;
+      flex-direction: column;
+      gap: 1.5rem;
     }
-    .left-panel {
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: white;
+      font-size: 18px;
+    }
+
+    .brand-title h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+    }
+
+    .brand-title p {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .stats-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.375rem 0.75rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
+    .stats-badge strong {
+      color: var(--text-main);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.875rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+      font-family: inherit;
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      border-color: var(--border-subtle);
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--bg-surface-hover);
+      border-color: var(--border-focus);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Main Grid */
+    .grid-container {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 860px) {
+      .grid-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+    }
+
+    /* Query Box */
+    .query-card {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .search-input {
       flex: 1;
-      min-width: 0;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      color: var(--text-main);
+      font-size: 0.9375rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    .examples-box ul {
-      margin: 0.8rem 0;
-      padding-left: 1.5rem;
+
+    .search-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
-    .examples-box li {
-      margin: 0.5rem 0;
-      font-style: italic;
-      color: #586e75;
+
+    .search-input::placeholder {
+      color: var(--text-dim);
     }
-    table {
-      margin-top: 1rem;
-      border-collapse: collapse;
-      width: 100%;
-      background: #073642;
+
+    /* Segmented Controls */
+    .mode-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      font-size: 0.8125rem;
     }
-    th, td {
-      padding: 8px 12px;
-      border: 1px solid #586e75;
-      color: #93a1a1;
+
+    .segmented-control {
+      display: inline-flex;
+      background: var(--bg-base);
+      padding: 3px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
     }
-    th {
-      background-color: #002b36;
+
+    .segment-option {
+      position: relative;
     }
-    code {
+
+    .segment-option input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .segment-option label {
       display: block;
-      background: #073642;
-      padding: 0.5rem;
-      margin: 0.5rem 0;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
       border-radius: 4px;
-      border: 1px solid #586e75;
-      color: #93a1a1;
+      transition: color 0.15s ease, background-color 0.15s ease;
+      user-select: none;
     }
-    
-    .loading-dots::after {
-      content: '';
-      animation: loading-dots 1.5s infinite;
+
+    .segment-option input:checked + label {
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
-    
-    @keyframes loading-dots {
-      0% { content: ''; }
-      25% { content: '.'; }
-      50% { content: '..'; }
-      75% { content: '...'; }
-      100% { content: ''; }
+
+    /* Response View */
+    .response-card {
+      margin-top: 1rem;
+      display: none;
+      flex-direction: column;
+      gap: 1rem;
+      border-left: 3px solid var(--primary);
+    }
+
+    .response-card.active {
+      display: flex;
+    }
+
+    .response-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .mode-tag {
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .response-body {
+      font-size: 0.9375rem;
+      color: var(--text-main);
+      line-height: 1.7;
+    }
+
+    .response-body p {
+      margin-bottom: 0.75rem;
+    }
+
+    .response-body ul, .response-body ol {
+      margin-left: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .response-body li {
+      margin-bottom: 0.35rem;
+    }
+
+    .response-body strong {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    /* SQL Results Table */
+    .table-container {
+      overflow-x: auto;
+      margin-top: 0.75rem;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      text-align: left;
+    }
+
+    th {
+      background: var(--bg-surface-elevated);
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 0.625rem 0.875rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    td {
+      padding: 0.625rem 0.875rem;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-main);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: var(--bg-surface-hover);
+    }
+
+    td a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    td a:hover {
+      text-decoration: underline;
+    }
+
+    pre code {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+      color: #38bdf8;
+      overflow-x: auto;
+      margin: 0.5rem 0;
+    }
+
+    /* Sidebar / Suggested Queries */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .sidebar-section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
+    .chip-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .chip-btn {
+      text-align: left;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.625rem 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1.4;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .chip-btn:hover {
+      background: var(--bg-surface-hover);
+      border-color: var(--border-focus);
+      color: var(--text-main);
+    }
+
+    /* Status Alert */
+    .status-alert {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+      display: none;
+    }
+
+    .status-alert.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .status-alert.success {
+      display: block;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6ee7b7;
+    }
+
+    /* Loading state */
+    .loading-state {
+      display: none;
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    .loading-state.active {
+      display: block;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border-subtle);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 0.75rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-      <h1 style="margin: 0;">Strava Activity Assistant</h1>
-      <div>
-        <button id="syncButton" style="padding: 10px 16px; font-size: 14px; cursor: pointer; background: #2aa198; color: #fdf6e3; border: none; border-radius: 4px; transition: background-color 0.2s ease;">
-          🔄 Sync Strava
+  <div class="app-layout">
+    <header>
+      <div class="brand">
+        <div class="brand-logo">S</div>
+        <div class="brand-title">
+          <h1>Strava Activity Insights</h1>
+          <p>Semantic search & SQL analysis over your fitness data</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="stats-badge" id="statsBadge">
+          <span>Indexed:</span>
+          <strong id="activityCount">-</strong>
+        </div>
+        <button class="btn btn-secondary" id="syncButton">
+          <span id="syncBtnText">Sync Strava</span>
         </button>
-        <span id="syncStatusText" style="margin-left: 10px; font-size: 13px; color: #839496;"></span>
       </div>
-    </div>
-    
-    <div class="main-content">
-      <div class="left-panel">
-        <div style="margin-bottom: 1.5rem;">
-          <input type="text" id="questionInput" placeholder="e.g. Tell me about my best running activities, or What was my longest bike ride?">
-          <button id="submitButton">Ask</button>
+    </header>
+
+    <div class="grid-container">
+      <main>
+        <div class="card query-card">
+          <div class="input-row">
+            <input 
+              type="text" 
+              id="questionInput" 
+              class="search-input" 
+              placeholder="Ask a question about your workouts, pace, or distances..." 
+              autocomplete="off"
+              autofocus
+            >
+            <button class="btn btn-primary" id="submitButton">Query</button>
+          </div>
+
+          <div class="mode-bar">
+            <div class="segmented-control">
+              <div class="segment-option">
+                <input type="radio" id="modeRag" name="approach" value="rag" checked>
+                <label for="modeRag">Semantic Search</label>
+              </div>
+              <div class="segment-option">
+                <input type="radio" id="modeHybrid" name="approach" value="hybrid">
+                <label for="modeHybrid">Hybrid (RAG + SQL)</label>
+              </div>
+            </div>
+            <span id="syncStatusMessage" style="font-size: 0.8125rem; color: var(--text-dim);"></span>
+          </div>
         </div>
-        
-        <div class="approach-selector">
-          <strong>🔧 Analysis Mode:</strong><br><br>
-          <label>
-            <input type="radio" name="approach" value="rag" checked> RAG (Semantic Search)
-          </label>
-          <label>
-            <input type="radio" name="approach" value="hybrid"> Hybrid (RAG + SQL)
-          </label>
+
+        <div id="statusAlert" class="status-alert" style="margin-top: 1rem;"></div>
+
+        <div id="loadingIndicator" class="card loading-state" style="margin-top: 1rem;">
+          <div class="spinner"></div>
+          <div>Analyzing your activities...</div>
         </div>
-        
-        <div id="responseBox"></div>
-      </div>
-      
-      <div class="examples-box">
-        <strong>Try asking:</strong>
-        <ul>
-          <li>"Tell me about my best running activities"</li>
-          <li>"What was my longest bike ride?"</li>
-          <li>"Show me activities similar to my hardest workout"</li>
-          <li>"How many rides did I do this year?" (better with Hybrid)</li>
-        </ul>
-        <div id="dbStats" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #586e75; font-size: 13px;">
-          <strong>📊 Database:</strong><br>
-          <span id="dbTotal">Loading stats...</span>
+
+        <div id="responseContainer" class="card response-card">
+          <div class="response-meta">
+            <div><strong>Query:</strong> <span id="displayQuestion"></span></div>
+            <div class="mode-tag" id="displayMode">RAG</div>
+          </div>
+          <div class="response-body" id="displayAnswer"></div>
         </div>
-      </div>
+      </main>
+
+      <aside class="sidebar">
+        <div class="card">
+          <div class="sidebar-section-title">Suggested Queries</div>
+          <div class="chip-list">
+            <button class="chip-btn" data-query="What was my longest run?" data-mode="hybrid">What was my longest run?</button>
+            <button class="chip-btn" data-query="Tell me about my best running activities" data-mode="rag">Tell me about my best running activities</button>
+            <button class="chip-btn" data-query="What was my longest bike ride?" data-mode="hybrid">What was my longest bike ride?</button>
+            <button class="chip-btn" data-query="Show me activities similar to my hardest workout" data-mode="rag">Show activities like my hardest workout</button>
+            <button class="chip-btn" data-query="How many rides did I do this year?" data-mode="hybrid">How many rides did I do this year?</button>
+          </div>
+        </div>
+
+        <div class="card" style="font-size: 0.8125rem; color: var(--text-muted);">
+          <div class="sidebar-section-title">Database Status</div>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <div>Total Activities: <strong id="dbTotalCount" style="color: var(--text-main);">-</strong></div>
+            <div>Latest Activity: <strong id="dbLatestDate" style="color: var(--text-main);">-</strong></div>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 
   <script>
-    document.getElementById("submitButton").addEventListener("click", () => {
-      const question = document.getElementById("questionInput").value;
-      sendQuery(question);
-    });
+    const questionInput = document.getElementById("questionInput");
+    const submitButton = document.getElementById("submitButton");
+    const responseContainer = document.getElementById("responseContainer");
+    const displayQuestion = document.getElementById("displayQuestion");
+    const displayMode = document.getElementById("displayMode");
+    const displayAnswer = document.getElementById("displayAnswer");
+    const loadingIndicator = document.getElementById("loadingIndicator");
+    const statusAlert = document.getElementById("statusAlert");
+    const syncButton = document.getElementById("syncButton");
+    const syncBtnText = document.getElementById("syncBtnText");
+    const syncStatusMessage = document.getElementById("syncStatusMessage");
+    const activityCount = document.getElementById("activityCount");
+    const dbTotalCount = document.getElementById("dbTotalCount");
+    const dbLatestDate = document.getElementById("dbLatestDate");
 
-    // Add Enter key support for the input field
-    document.getElementById("questionInput").addEventListener("keypress", (event) => {
-      if (event.key === "Enter") {
-        const question = document.getElementById("questionInput").value;
-        sendQuery(question);
+    // Markdown-to-HTML parser (clean headers, paragraphs, lists, bold, code)
+    function renderMarkdown(text) {
+      if (!text) return "";
+      
+      let html = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+      // Code blocks (fenced ```)
+      html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+      
+      // Inline code
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+      // Bold and Italic
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+      // Headings
+      html = html.replace(/^###[ \t]+(.*$)/gim, '<h4 style="margin: 1.1rem 0 0.4rem; color: #ffffff; font-size: 0.95rem; font-weight: 600;">$1</h4>');
+      html = html.replace(/^##[ \t]+(.*$)/gim, '<h3 style="margin: 1.25rem 0 0.5rem; color: #ffffff; font-size: 1.05rem; font-weight: 600;">$1</h3>');
+      html = html.replace(/^#[ \t]+(.*$)/gim, '<h2 style="margin: 1.4rem 0 0.6rem; color: #ffffff; font-size: 1.15rem; font-weight: 700;">$1</h2>');
+
+      // Lists & Paragraphs
+      const lines = html.split('\n');
+      let inList = false;
+      let result = [];
+
+      for (let line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || /^\d+\.\s/.test(trimmed)) {
+          if (!inList) {
+            inList = true;
+            result.push('<ul style="margin-left: 1.25rem; margin-bottom: 0.75rem;">');
+          }
+          const itemText = trimmed.replace(/^[-*]\s+|\d+\.\s+/, '');
+          result.push(`<li style="margin-bottom: 0.35rem;">${itemText}</li>`);
+        } else {
+          if (inList) {
+            inList = false;
+            result.push('</ul>');
+          }
+          if (trimmed.length > 0) {
+            if (trimmed.startsWith('<h2') || trimmed.startsWith('<h3') || trimmed.startsWith('<h4') || trimmed.startsWith('<pre')) {
+              result.push(trimmed);
+            } else {
+              result.push(`<p style="margin-bottom: 0.5rem;">${trimmed}</p>`);
+            }
+          }
+        }
       }
-    });
+      if (inList) {
+        result.push('</ul>');
+      }
+
+      return result.join('\n');
+    }
+
+    function showStatus(message, type = "error") {
+      statusAlert.className = `status-alert ${type}`;
+      statusAlert.textContent = message;
+      if (type === "success") {
+        setTimeout(() => { statusAlert.style.display = "none"; }, 5000);
+      }
+    }
+
+    function hideStatus() {
+      statusAlert.className = "status-alert";
+      statusAlert.style.display = "none";
+    }
 
     function sendQuery(question) {
+      const q = (question || questionInput.value).trim();
+      if (!q) return;
+
       const approach = document.querySelector('input[name="approach"]:checked').value;
       const endpoint = approach === 'hybrid' ? '/hybrid-query' : '/query';
-      const responseBox = document.getElementById("responseBox");
-      
-      responseBox.innerHTML = `
-        <div style="text-align: center; padding: 2rem; background: linear-gradient(135deg, #1e3c32 0%, #2d5016 100%); color: white; border-radius: 12px;">
-          <div style="font-size: 18px; font-weight: bold;">Analyzing your activities<span class="loading-dots"></span></div>
-          <div style="font-size: 14px; margin-top: 0.5rem; opacity: 0.9;">Using ${approach.toUpperCase()} approach</div>
-        </div>
-      `;
+
+      hideStatus();
+      responseContainer.classList.remove("active");
+      loadingIndicator.classList.add("active");
+      submitButton.disabled = true;
 
       fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question })
+        body: JSON.stringify({ question: q })
       })
-      .then(response => response.json())
+      .then(res => {
+        if (!res.ok) {
+          return res.json().then(d => { throw new Error(d.error || `Server responded with status ${res.status}`); });
+        }
+        return res.json();
+      })
       .then(data => {
+        loadingIndicator.classList.remove("active");
+        submitButton.disabled = false;
+
+        displayQuestion.textContent = data.question || q;
+        displayMode.textContent = data.approach || (approach === 'hybrid' ? 'Hybrid RAG + SQL' : 'Semantic RAG');
+
         if (data.response) {
-          // Handle RAG response format with enhanced icons and styling
-          const processedResponse = addActivityIcons(data.response);
-          
-          responseBox.innerHTML = `
-            <div style="margin-bottom: 1rem; padding: 0.8rem; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #2d5016;">
-              <strong>Question:</strong> ${data.question}
-            </div>
-            <div style="margin-bottom: 1rem; text-align: center;">
-              <span style="background: #2d5016; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 12px; font-weight: bold;">
-                ${data.approach}
-              </span>
-            </div>
-            <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #2d5016; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-                <strong style="color: #2d5016;">Response:</strong>
-              </div>
-              <div style="line-height: 1.8; font-size: 15px;">${processedResponse.replace(/\n/g, '<br>')}</div>
-            </div>
-          `;
-        } else if (data.sql_query) {
-          // Handle legacy SQL response format (if still needed)
-          let formattedResults = "<table><tr>";
+          displayAnswer.innerHTML = renderMarkdown(data.response);
+          responseContainer.classList.add("active");
+        } else if (data.sql_query && data.results) {
+          let tableHtml = '<div class="table-container"><table><thead><tr>';
           if (data.results.length > 0) {
             Object.keys(data.results[0]).forEach(col => {
-              formattedResults += `<th>${col}</th>`;
+              tableHtml += `<th>${col}</th>`;
             });
-            formattedResults += "</tr>";
+            tableHtml += '</tr></thead><tbody>';
 
             data.results.forEach(row => {
-              formattedResults += "<tr>";
+              tableHtml += '<tr>';
               Object.values(row).forEach(val => {
-                formattedResults += `<td>${val}</td>`;
+                tableHtml += `<td>${val}</td>`;
               });
-              formattedResults += "</tr>";
+              tableHtml += '</tr>';
             });
-            formattedResults += "</table>";
+            tableHtml += '</tbody></table></div>';
           } else {
-            formattedResults = "<em>No results found.</em>";
+            tableHtml = '<p style="color: var(--text-muted);">No records found matching query.</p>';
           }
 
-          responseBox.innerHTML = `
-            <strong>SQL Query:</strong>
-            <code>${data.sql_query}</code>
-            <strong>Results:</strong>
-            ${formattedResults}
+          displayAnswer.innerHTML = `
+            <pre><code>${data.sql_query}</code></pre>
+            ${tableHtml}
           `;
-        } else {
-          responseBox.innerHTML = `<span style="color: red;">Error: ${data.error}</span>`;
+          responseContainer.classList.add("active");
+        } else if (data.error) {
+          showStatus(data.error, "error");
         }
       })
       .catch(err => {
-        responseBox.innerHTML = `<span style="color: red;">Error: ${err.message}</span>`;
+        loadingIndicator.classList.remove("active");
+        submitButton.disabled = false;
+        showStatus(err.message || "Failed to process query.", "error");
       });
     }
 
-    function addActivityIcons(text) {
-      // Add icons for different activity types
-      let processedText = text
-        .replace(/\b(Ride|Cycling|Bike|ride|cycling|bike)\b/g, '🚴 $1')
-        .replace(/\b(Run|Running|run|running)\b/g, '🏃 $1')
-        .replace(/\b(Workout|workout|Weight|weight|Strength|strength|Gym|gym)\b/g, '🏋️ $1')
-        .replace(/\b(Hike|Hiking|hike|hiking|Trek|trekking)\b/g, '🥾 $1')
-        .replace(/\b(Walk|Walking|walk|walking)\b/g, '🚶 $1')
-        .replace(/\b(Swim|Swimming|swim|swimming)\b/g, '🏊 $1');
-      
-      return processedText;
-    }
+    submitButton.addEventListener("click", () => sendQuery());
 
-    // Sync button logic
-    const syncButton = document.getElementById("syncButton");
-    const syncStatusText = document.getElementById("syncStatusText");
-    const dbTotal = document.getElementById("dbTotal");
+    questionInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendQuery();
+      }
+    });
 
-    function fetchDbStats() {
+    // Suggested query chips
+    document.querySelectorAll(".chip-btn").forEach(chip => {
+      chip.addEventListener("click", () => {
+        const query = chip.getAttribute("data-query");
+        const mode = chip.getAttribute("data-mode");
+        if (mode) {
+          const radio = document.querySelector(`input[name="approach"][value="${mode}"]`);
+          if (radio) radio.checked = true;
+        }
+        questionInput.value = query;
+        sendQuery(query);
+      });
+    });
+
+    // Fetch Database Stats
+    function loadStats() {
       fetch('/api/sync/status')
         .then(res => res.json())
         .then(data => {
           if (data.total_activities !== undefined) {
-            const dateStr = data.latest_timestamp ? new Date(data.latest_timestamp).toLocaleDateString() : 'None';
-            dbTotal.innerHTML = `Total: <strong>${data.total_activities}</strong> activities<br>Latest: <strong>${dateStr}</strong>`;
-          } else {
-            dbTotal.innerText = 'Unable to load stats';
+            const count = data.total_activities.toLocaleString();
+            activityCount.textContent = count;
+            dbTotalCount.textContent = count;
+            if (data.latest_timestamp) {
+              const dt = new Date(data.latest_timestamp);
+              dbLatestDate.textContent = dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+            } else {
+              dbLatestDate.textContent = 'None';
+            }
           }
         })
         .catch(() => {
-          dbTotal.innerText = 'Unable to load stats';
+          activityCount.textContent = "-";
         });
     }
 
+    // Sync button
     syncButton.addEventListener("click", () => {
       syncButton.disabled = true;
-      syncButton.innerText = "⏳ Syncing...";
-      syncStatusText.innerText = "Connecting to Strava...";
+      syncBtnText.textContent = "Syncing...";
+      syncStatusMessage.textContent = "Connecting to Strava...";
 
       fetch('/api/sync', {
         method: "POST",
@@ -338,25 +768,24 @@
       .then(res => res.json())
       .then(data => {
         syncButton.disabled = false;
-        syncButton.innerText = "🔄 Sync Strava";
+        syncBtnText.textContent = "Sync Strava";
         if (data.status === "success") {
-          syncStatusText.innerText = `✅ Synced ${data.synced_count} activities!`;
-          fetchDbStats();
-          setTimeout(() => { syncStatusText.innerText = ""; }, 5000);
+          syncStatusMessage.textContent = `Synced ${data.synced_count} activities`;
+          loadStats();
+          setTimeout(() => { syncStatusMessage.textContent = ""; }, 5000);
         } else {
-          syncStatusText.innerText = `❌ Sync failed: ${data.error || 'Unknown error'}`;
+          syncStatusMessage.textContent = `Sync failed: ${data.error || 'Unknown'}`;
         }
       })
       .catch(err => {
         syncButton.disabled = false;
-        syncButton.innerText = "🔄 Sync Strava";
-        syncStatusText.innerText = `❌ Error: ${err.message}`;
+        syncBtnText.textContent = "Sync Strava";
+        syncStatusMessage.textContent = `Error: ${err.message}`;
       });
     });
 
-    // Initial stats load
-    fetchDbStats();
+    // Initial load
+    loadStats();
   </script>
-  </div>
 </body>
 </html>

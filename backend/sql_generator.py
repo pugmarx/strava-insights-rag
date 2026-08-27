@@ -50,9 +50,16 @@ def query_ollama(prompt):
 
 # Generate SQL Query using LLM
 def generate_sql_query(user_question):
-    """Send the user question to Ollama and get an SQL query back."""
-    schema_info = """
+    """Send the user question to LLM and get an SQL query back."""
+    now = datetime.now()
+    current_date_str = now.strftime('%B %d, %Y')
+    current_year = now.year
+    current_month = now.strftime('%B')
+    current_month_num = now.month
+
+    schema_info = f"""
     You are a PostgreSQL SQL expert using pgvector. Convert the user query into an SQL statement.
+    Today's Date: {current_date_str} (Current Year: {current_year}, Current Month: {current_month} - month #{current_month_num})
     
     ## Database Schema
     CREATE TABLE activities (
@@ -73,15 +80,18 @@ def generate_sql_query(user_question):
     - Never use `<=>` directly in a JOIN ... ON clause unless it is wrapped in a comparison (e.g., `< 0.5`) or placed inside `ORDER BY`.
     - To find the most similar activity, use `<=>` inside an `ORDER BY` clause and `LIMIT 1`.
     - Use `timestamp` for time-based queries.
+    - For relative date terms:
+      - 'this year' means: EXTRACT(YEAR FROM timestamp) = {current_year} (or timestamp >= DATE_TRUNC('year', CURRENT_DATE))
+      - 'last year' means: EXTRACT(YEAR FROM timestamp) = {current_year - 1}
+      - 'this month' means: EXTRACT(YEAR FROM timestamp) = {current_year} AND EXTRACT(MONTH FROM timestamp) = {current_month_num} (or timestamp >= DATE_TRUNC('month', CURRENT_DATE))
     - Use `distance` and `duration` for activity performance queries.
     - Use `embedding <=> embedding` for cosine similarity queries.
-    - Use cosine similarity (`<=>`) on the `embedding` vector column when needed.
     - Always return `activity_id`, `activity_type`, `distance`, `duration`, and `timestamp` in the SELECT statement.
     - PostgreSQL does **not support** YEAR(timestamp). Instead, use: EXTRACT(YEAR FROM "timestamp")
     - Same for month: use EXTRACT(MONTH FROM "timestamp")
     - Use double quotes for column names when needed (like "timestamp")
     - Write SQL that finds similar runs using embedding comparison, and if you use subqueries or CTEs, make sure to include all columns that are referenced later (e.g. timestamp).
-    - Just return the SQL query, no other meta information about the query.
+    - Just return the clean SQL query, no explanation or markdown fences.
     
     
     ## **Examples**
@@ -94,22 +104,23 @@ def generate_sql_query(user_question):
     ORDER BY distance DESC 
     LIMIT 1;
     
-    ### Example 2: Find similar activities to my last run
-    User Question: "Find similar activities to my last 'Run' activity"
+    ### Example 2: How many rides did I do this year?
+    User Question: "How many rides did I do this year?"
     SQL Query:
-    WITH last_run AS (
-        SELECT embedding FROM activities 
-        WHERE activity_type = 'Run' 
-        ORDER BY timestamp DESC 
-        LIMIT 1
-    )
-    SELECT activity_id, activity_type, distance, duration, timestamp, 
-           1 - (embedding <=> (SELECT embedding FROM last_run)) AS similarity_score
+    SELECT COUNT(*) AS total_rides
     FROM activities
-    ORDER BY similarity_score DESC
-    LIMIT 5;
+    WHERE activity_type = 'Ride' AND EXTRACT(YEAR FROM timestamp) = {current_year};
     
-    ### Example 3: Find my most active month
+    ### Example 3: Longest run this month
+    User Question: "What was my longest run this month?"
+    SQL Query:
+    SELECT activity_id, activity_type, distance, duration, timestamp
+    FROM activities
+    WHERE activity_type = 'Run' AND EXTRACT(YEAR FROM timestamp) = {current_year} AND EXTRACT(MONTH FROM timestamp) = {current_month_num}
+    ORDER BY distance DESC
+    LIMIT 1;
+
+    ### Example 4: Find my most active month
     User Question: "Which month was I most active?"
     SQL Query:
     SELECT DATE_TRUNC('month', timestamp) AS activity_month, 
@@ -118,16 +129,9 @@ def generate_sql_query(user_question):
     GROUP BY activity_month 
     ORDER BY total_activities DESC 
     LIMIT 1;
-
-    ### Example: Find the year with the least number of activities
-    SELECT EXTRACT(YEAR FROM timestamp) AS activity_year, COUNT(*) AS total_activities
-    FROM activities
-    GROUP BY activity_year
-    ORDER BY total_activities ASC
-    LIMIT 1;
     
     Now, generate the SQL query based on the following user question:
-    User Question: {user_question}
+    User Question: {{user_question}}
     SQL Query:
     """
     
@@ -143,16 +147,6 @@ def generate_sql_query(user_question):
     return sql_query
 
 
-ACTIVITY_EMOJIS = {
-    "Run": "🏃",
-    "Ride": "🚴",
-    "Swim": "🏊",
-    "Walk": "🚶",
-    "Hike": "🥾",
-    "Workout": "💪",
-    "Yoga": "🧘",
-}
-
 def format_results(results, cursor_description):
     """Format SQL query results using cursor description."""
     formatted = []
@@ -164,24 +158,29 @@ def format_results(results, cursor_description):
 
         for col, value in row_dict.items():
             if col == "activity_type":
-                emoji = ACTIVITY_EMOJIS.get(value, "❓")
-                #formatted_row["Activity"] = f"{emoji} {value}"
-                formatted_row["Activity"] = f"{emoji}"
+                formatted_row["Activity"] = str(value) if value else "Unknown"
             elif col == "distance":
-                formatted_row["Distance"] = f"{value / 1000:.1f} km"
+                formatted_row["Distance"] = f"{value / 1000:.1f} km" if value is not None else "-"
             elif col == "duration":
-                hours = value // 3600
-                minutes = (value % 3600) // 60
-                formatted_row["Duration"] = f"{hours}h {minutes}m"
+                if value is not None:
+                    hours = value // 3600
+                    minutes = (value % 3600) // 60
+                    formatted_row["Duration"] = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+                else:
+                    formatted_row["Duration"] = "-"
             elif col == "timestamp":
                 if isinstance(value, str):
-                    value = datetime.fromisoformat(value)
-                formatted_row["Date"] = value.strftime("%Y-%m-%d %H:%M")
+                    try:
+                        value = datetime.fromisoformat(value)
+                    except Exception:
+                        pass
+                if isinstance(value, datetime):
+                    formatted_row["Date"] = value.strftime("%Y-%m-%d %H:%M")
+                else:
+                    formatted_row["Date"] = str(value)
             elif col == "activity_id":
                 activity_url = f"https://www.strava.com/activities/{value}"
-                formatted_row["Link"] = f'<a href="{activity_url}" target="_blank">View</a>'
-                #formatted_row["link_html"] = f'<a href="{activity_url}" target="_blank">View</a>'
-                #formatted_row["link"] = f"https://www.strava.com/activities/{value}"
+                formatted_row["Link"] = f'<a href="{activity_url}" target="_blank" rel="noopener noreferrer">View on Strava</a>'
             else:
                 formatted_row[col] = value
 

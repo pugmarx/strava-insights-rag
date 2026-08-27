@@ -141,144 +141,73 @@ def execute_direct_sql(sql_query, limit, debug=False):
         conn.close()
 
 
+def extract_time_filters(user_query):
     """
-    RAG Retrieval Step: Find activities similar to user query using vector similarity.
-    Enhanced to handle superlative queries (longest, fastest, etc.)
+    Extract date/time filters from user query, supporting relative terms like
+    'this year', 'last year', 'this month', 'last month', explicit years, and month names.
+    Returns a list of SQL where condition strings.
     """
-    # Convert user query to embedding
-    query_embedding = compute_embedding(user_query)
+    import re
+    now = datetime.now()
+    query_lower = user_query.lower()
+    conditions = []
     
-    # Check if this is a superlative query that needs special handling
-    superlative_keywords = {
-        'longest': ('distance', 'DESC'),
-        'shortest': ('distance', 'ASC'), 
-        'fastest': ('duration', 'ASC'),  # assuming faster = less time
-        'slowest': ('duration', 'DESC'),
-        'recent': ('timestamp', 'DESC'),
-        'oldest': ('timestamp', 'ASC')
+    # 1. Year filters
+    if 'this year' in query_lower:
+        conditions.append(f"EXTRACT(YEAR FROM timestamp) = {now.year}")
+    elif 'last year' in query_lower:
+        conditions.append(f"EXTRACT(YEAR FROM timestamp) = {now.year - 1}")
+    else:
+        year_match = re.search(r'\b(20\d{2})\b', user_query)
+        if year_match:
+            conditions.append(f"EXTRACT(YEAR FROM timestamp) = {year_match.group(1)}")
+            
+    # 2. Month filters
+    month_names = {
+        'january': 1, 'jan': 1,
+        'february': 2, 'feb': 2,
+        'march': 3, 'mar': 3,
+        'april': 4, 'apr': 4,
+        'may': 5,
+        'june': 6, 'jun': 6,
+        'july': 7, 'jul': 7,
+        'august': 8, 'aug': 8,
+        'september': 9, 'sep': 9, 'sept': 9,
+        'october': 10, 'oct': 10,
+        'november': 11, 'nov': 11,
+        'december': 12, 'dec': 12
     }
     
-    # Handle "best" with context-aware logic
-    best_keywords = ['best', 'top', 'greatest', 'personal record', 'pr']
-    
-    # Check if query contains superlative words
-    query_lower = user_query.lower()
-    sort_column = None
-    sort_order = None
-    is_best_query = False
-    
-    # Check for "best" queries first
-    if any(keyword in query_lower for keyword in best_keywords):
-        is_best_query = True
-        # Determine what "best" means based on context
-        if 'run' in query_lower:
-            if 'pace' in query_lower or 'fast' in query_lower:
-                # Best pace = shortest duration for similar distances
-                sort_column = 'pace'  # Special handling below
-            else:
-                # Default "best run" = longest distance
-                sort_column = 'distance'
-                sort_order = 'DESC'
-        elif 'ride' in query_lower or 'cycling' in query_lower:
-            # Best ride = longest distance
-            sort_column = 'distance' 
-            sort_order = 'DESC'
-        elif any(word in query_lower for word in ['workout', 'weight', 'strength', 'gym', 'training']):
-            # Best workout = longest duration (most time spent training)
-            sort_column = 'duration'
-            sort_order = 'DESC'
-        else:
-            # Generic "best" = longest distance across all activities
-            sort_column = 'distance'
-            sort_order = 'DESC'
+    if 'this month' in query_lower:
+        if not any("EXTRACT(YEAR FROM timestamp)" in c for c in conditions):
+            conditions.append(f"EXTRACT(YEAR FROM timestamp) = {now.year}")
+        conditions.append(f"EXTRACT(MONTH FROM timestamp) = {now.month}")
+    elif 'last month' in query_lower:
+        last_month = 12 if now.month == 1 else now.month - 1
+        last_month_year = now.year - 1 if now.month == 1 else now.year
+        conditions = [c for c in conditions if "EXTRACT(YEAR FROM timestamp)" not in c]
+        conditions.append(f"EXTRACT(YEAR FROM timestamp) = {last_month_year}")
+        conditions.append(f"EXTRACT(MONTH FROM timestamp) = {last_month}")
     else:
-        # Regular superlative keywords
-        for keyword, (column, order) in superlative_keywords.items():
-            if keyword in query_lower:
-                sort_column = column
-                sort_order = order
+        for m_name, m_num in month_names.items():
+            if re.search(r'\b' + m_name + r'\b', query_lower):
+                conditions.append(f"EXTRACT(MONTH FROM timestamp) = {m_num}")
                 break
-    
-    conn = connect_db()
-    if not conn:
-        return []
-    
-    cursor = conn.cursor()
-    
-    try:
-        if sort_column:
-            # For superlative queries, get top activities by the relevant metric
-            # Filter by activity type FIRST, then sort (more efficient)
-            activity_type_filter = ""
-            filter_params = [query_embedding]
-            
-            if 'run' in query_lower:
-                activity_type_filter = "WHERE activity_type = 'Run'"
-            elif 'ride' in query_lower or 'cycling' in query_lower or 'bike' in query_lower:
-                activity_type_filter = "WHERE activity_type = 'Ride'"
-            elif 'hike' in query_lower:
-                activity_type_filter = "WHERE activity_type = 'Hike'"
-            elif any(word in query_lower for word in ['workout', 'weight', 'strength', 'gym', 'training']):
-                activity_type_filter = "WHERE activity_type IN ('WeightTraining', 'Workout') AND (distance IS NULL OR distance < 1000)"
-            
-            # Special handling for pace-based "best" queries
-            if sort_column == 'pace':
-                # Best pace = fastest speed (distance/duration) for runs > 1km
-                additional_filter = " AND distance > 1000" if activity_type_filter else "WHERE distance > 1000"
-                cursor.execute(f"""
-                    SELECT activity_id, activity_type, distance, duration, timestamp,
-                           1 - (embedding <=> %s::vector) as similarity_score,
-                           (distance/1000.0)/(duration/3600.0) as pace_kmh
-                    FROM activities 
-                    {activity_type_filter}{additional_filter}
-                    ORDER BY pace_kmh DESC
-                    LIMIT %s
-                """, (filter_params[0], top_k))
-            else:
-                cursor.execute(f"""
-                    SELECT activity_id, activity_type, distance, duration, timestamp,
-                           1 - (embedding <=> %s::vector) as similarity_score
-                    FROM activities 
-                    {activity_type_filter}
-                    ORDER BY {sort_column} {sort_order}
-                    LIMIT %s
-                """, (filter_params[0], top_k))
-        else:
-            # Regular vector similarity search
-            cursor.execute("""
-                SELECT activity_id, activity_type, distance, duration, timestamp,
-                       1 - (embedding <=> %s::vector) as similarity_score
-                FROM activities 
-                ORDER BY embedding <=> %s::vector 
-                LIMIT %s
-            """, (query_embedding, query_embedding, top_k))
-        
-        results = cursor.fetchall()
-        
-        # Convert to list of dictionaries
-        activities = []
-        for row in results:
-            activities.append({
-                'activity_id': row[0],
-                'activity_type': row[1],
-                'distance': row[2],
-                'duration': row[3],
-                'timestamp': row[4],
-                'similarity_score': row[5]
-            })
-        
-        return activities
-        
-    except psycopg2.Error as e:
-        print(f"Error in vector search: {e}")
-        return []
-    finally:
-        cursor.close()
-        conn.close()
+
+    # 3. Recent days/weeks
+    if 'this week' in query_lower:
+        conditions.append("timestamp >= DATE_TRUNC('week', CURRENT_DATE)")
+    elif 'past 30 days' in query_lower or 'last 30 days' in query_lower:
+        conditions.append("timestamp >= CURRENT_DATE - INTERVAL '30 days'")
+    elif 'past 7 days' in query_lower or 'last 7 days' in query_lower:
+        conditions.append("timestamp >= CURRENT_DATE - INTERVAL '7 days'")
+
+    return conditions
+
 
 def retrieve_similar_activities(user_query, top_k=5):
     """
-    Smart RAG Retrieval: Handle different query types appropriately.
+    Smart RAG Retrieval: Handle different query types, multi-activity filters, and chronological listings.
     """
     query_embedding = compute_embedding(user_query)
     query_lower = user_query.lower()
@@ -303,26 +232,32 @@ def retrieve_similar_activities(user_query, top_k=5):
         order_by = "embedding <=> %s::vector"
         params = [embedding_list, embedding_list]
         
-        # Filter by activity type if mentioned
-        if 'run' in query_lower and 'running' not in query_lower:
-            where_conditions.append("activity_type = 'Run'")
-        elif any(word in query_lower for word in ['ride', 'cycling', 'bike']):
-            where_conditions.append("activity_type = 'Ride'")
-        elif any(word in query_lower for word in ['hike', 'hiking', 'trek']):
-            where_conditions.append("activity_type = 'Hike'")
-        elif any(word in query_lower for word in ['workout', 'workouts', 'weight', 'strength', 'gym', 'training']):
-            where_conditions.append("activity_type IN ('WeightTraining', 'Workout') AND (distance IS NULL OR distance < 1000)")
+        # 1. Collect all mentioned activity types (supports multi-activity queries like 'cycling and hiking')
+        matched_types = []
+        if 'run' in query_lower:
+            matched_types.extend(['Run', 'TrailRun', 'VirtualRun'])
+        if any(word in query_lower for word in ['ride', 'cycling', 'bike', 'cycl']):
+            matched_types.extend(['Ride', 'VirtualRide', 'EBikeRide', 'GravelRide', 'MountainBikeRide'])
+        if any(word in query_lower for word in ['hike', 'hiking', 'trek', 'walk', 'walking']):
+            matched_types.extend(['Hike', 'Walk'])
+        if any(word in query_lower for word in ['workout', 'workouts', 'weight', 'strength', 'gym', 'training']):
+            matched_types.extend(['WeightTraining', 'Workout'])
+        if any(word in query_lower for word in ['swim', 'swimming']):
+            matched_types.extend(['Swim'])
+
+        if matched_types:
+            types_str = ", ".join(f"'{t}'" for t in set(matched_types))
+            where_conditions.append(f"activity_type IN ({types_str})")
         
-        # Filter by year if mentioned
-        import re
-        year_match = re.search(r'(20\d{2})', user_query)
-        if year_match:
-            year = year_match.group(1)
-            where_conditions.append(f"EXTRACT(YEAR FROM timestamp) = {year}")
+        # 2. Apply time filters (e.g. this year, this month, July, 2026, etc.)
+        time_filters = extract_time_filters(user_query)
+        where_conditions.extend(time_filters)
         
-        # Handle superlative queries
-        if any(word in query_lower for word in ['longest', 'best', 'top']) and 'similar' not in query_lower:
-            # For workout queries, use duration; for others use distance
+        # 3. Detect if query is a listing / timeline query
+        is_listing_query = any(k in query_lower for k in ['list', 'show', 'all', 'activities in', 'history', 'log', 'what did i do', 'how many', 'summary', 'everything']) or bool(time_filters)
+        
+        # 4. Handle sorting logic
+        if any(word in query_lower for word in ['longest', 'best', 'top', 'max', 'most']) and 'similar' not in query_lower:
             if any(word in query_lower for word in ['workout', 'workouts', 'weight', 'strength', 'gym', 'training']):
                 order_by = "duration DESC"
             else:
@@ -330,10 +265,13 @@ def retrieve_similar_activities(user_query, top_k=5):
         elif 'fastest' in query_lower:
             where_conditions.append("distance > 1000")  # Only meaningful for actual activities
             order_by = "(distance/duration) DESC"
-        elif 'recent' in query_lower:
+        elif 'recent' in query_lower or 'latest' in query_lower or is_listing_query:
             order_by = "timestamp DESC"
         elif 'shortest' in query_lower:
             order_by = "distance ASC"
+        
+        # For timeline/listing queries, retrieve enough items so the whole month/period is represented
+        fetch_limit = max(top_k, 60) if is_listing_query else top_k
         
         # Build final query
         where_clause = " WHERE " + " AND ".join(where_conditions) if where_conditions else ""
@@ -347,9 +285,9 @@ def retrieve_similar_activities(user_query, top_k=5):
         
         # Adjust params based on order_by
         if order_by == "embedding <=> %s::vector":
-            final_params = params + [top_k]
+            final_params = params + [fetch_limit]
         else:
-            final_params = [embedding_list] + [top_k]
+            final_params = [embedding_list] + [fetch_limit]
         
         cursor.execute(final_query, final_params)
         results = cursor.fetchall()
@@ -380,52 +318,67 @@ def build_context(retrieved_activities):
     Build context string from retrieved activities for LLM with calculated metrics.
     """
     if not retrieved_activities:
-        return "No relevant activities found."
+        return "No activities found."
     
-    context = "Here are your most relevant activities:\n\n"
-    
+    context_lines = []
     for i, activity in enumerate(retrieved_activities, 1):
         # Format timestamp
         if isinstance(activity['timestamp'], str):
             timestamp = datetime.fromisoformat(activity['timestamp'])
         else:
             timestamp = activity['timestamp']
+        date_str = timestamp.strftime('%Y-%m-%d %H:%M') if timestamp else 'Unknown date'
         
-        # Calculate metrics
-        distance_km = activity['distance'] / 1000 if activity['distance'] else 0
-        duration_seconds = activity['duration'] if activity['duration'] else 0
-        hours = duration_seconds // 3600
-        minutes = (duration_seconds % 3600) // 60
+        # Format distance
+        distance_meters = activity.get('distance')
+        if distance_meters:
+            distance_km = distance_meters / 1000
+            distance_str = f"{distance_km:.2f}km"
+        else:
+            distance_str = "N/A"
         
-        # Calculate pace and speed
-        pace_info = ""
-        if distance_km > 0 and duration_seconds > 0:
-            # Speed in km/h
-            speed_kmh = distance_km / (duration_seconds / 3600)
-            
-            # Pace in min/km (common for running)
-            pace_min_per_km = duration_seconds / 60 / distance_km
-            pace_mins = int(pace_min_per_km)
-            pace_secs = int((pace_min_per_km - pace_mins) * 60)
-            
-            pace_info = f", Speed: {speed_kmh:.1f} km/h, Pace: {pace_mins}:{pace_secs:02d} min/km"
+        # Format duration
+        duration_sec = activity.get('duration', 0)
+        hours = duration_sec // 3600
+        minutes = (duration_sec % 3600) // 60
+        seconds = duration_sec % 60
+        if hours > 0:
+            duration_str = f"{hours}h {minutes}m {seconds}s"
+        else:
+            duration_str = f"{minutes}m {seconds}s"
         
-        context += f"{i}. {activity['activity_type']} on {timestamp.strftime('%Y-%m-%d')}\n"
-        context += f"   Distance: {distance_km:.1f} km, Duration: {hours}h {minutes}m{pace_info}\n"
-        context += f"   Activity ID: {activity['activity_id']}\n"
+        # Calculate pace for running
+        pace_str = ""
+        if activity['activity_type'] in ['Run', 'TrailRun', 'VirtualRun'] and distance_meters and distance_meters > 0:
+            pace_sec_per_km = duration_sec / (distance_meters / 1000)
+            pace_min = int(pace_sec_per_km // 60)
+            pace_sec = int(pace_sec_per_km % 60)
+            pace_str = f", Pace: {pace_min}:{pace_sec:02d}/km"
         
-        # Only show similarity score in debug mode or for semantic searches
-        if activity['similarity_score'] < 0.9:  # Only show if it's actually a similarity search
-            context += f"   Similarity: {activity['similarity_score']:.3f}\n"
-        context += "\n"
+        # Calculate speed for cycling
+        speed_str = ""
+        if activity['activity_type'] in ['Ride', 'VirtualRide', 'EBikeRide', 'GravelRide', 'MountainBikeRide'] and distance_meters and duration_sec > 0:
+            speed_kmh = (distance_meters / 1000) / (duration_sec / 3600)
+            speed_str = f", Speed: {speed_kmh:.1f}km/h"
+        
+        context_lines.append(
+            f"{i}. {activity['activity_type']} on {date_str} (ID: {activity['activity_id']}) - "
+            f"Distance: {distance_str}, Duration: {duration_str}{pace_str}{speed_str}"
+        )
     
-    return context
+    return "\n".join(context_lines)
 
 def generate_rag_response(user_query, context):
     """
-    RAG Generation Step: Use LLM to generate response based on retrieved context.
+    Generate final response using LLM with retrieved context and temporal grounding.
     """
-    prompt = f"""You assistant which summarizes Strava activity data, based on the retrieved activity information below.
+    now = datetime.now()
+    current_date_str = now.strftime('%B %d, %Y')
+    current_year = now.year
+    current_month = now.strftime('%B')
+
+    prompt = f"""You are a helpful Strava activity assistant.
+Today's Date: {current_date_str} (Current Year: {current_year}, Current Month: {current_month})
 
 Retrieved Activity Context:
 {context}
@@ -434,14 +387,17 @@ User Question: {user_query}
 
 Instructions:
 - Use the activity data provided above to answer the question
-- ALWAYS use the exact activity_type shown in the data (WeightTraining, Workout, Run, Ride, etc.)
+- When answering relative time queries (like 'this month', 'this year', 'last month'), refer to Today's Date ({current_date_str})
+- ALWAYS state the specific activity type for each item (e.g. '- Ride on YYYY-MM-DD: ...', '- Hike on YYYY-MM-DD: ...', '- Run on YYYY-MM-DD: ...', '- Workout on YYYY-MM-DD: ...'). NEVER use the generic word 'Activity' when the specific type is known.
+- Group activities by their activity type (e.g. Rides, Runs, Hikes, Workouts) if multiple types exist
+- Enlist each qualifying activity as a clean unindented bullet point (- [Type] on YYYY-MM-DD: Distance, Duration, Speed/Pace)
 - For WeightTraining and Workout activities, focus on duration as the main performance metric
 - For running activities, pace (min/km) is often more meaningful than speed
 - For cycling activities, consider both distance and speed
 - Include dates, distances, and performance metrics in your analysis
 - If comparing activities across time periods, highlight the differences
 - Don't mention similarity scores or technical details about retrieval
-- Enlist the qualifying activities as bullets and prefix 'Ride' or 'Run' or 'Hike', according to the activity
+- Keep formatting clean, factual, and concise without using emojis
 
 Response:"""
     

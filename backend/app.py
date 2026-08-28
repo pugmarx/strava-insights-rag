@@ -18,10 +18,17 @@ from sql_rag import handle_rag_query, hybrid_query_handler
 from strava_service import sync_single_activity, delete_activity, sync_incremental, get_latest_activity_timestamp
 from token_manager import get_db_connection
 from cache_manager import init_cache_table, invalidate_all_caches
+from version import __version__, BUILD_VERSION
 
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
+
+@app.after_request
+def add_version_headers(response):
+    """Add version header to every HTTP response."""
+    response.headers["X-App-Version"] = BUILD_VERSION
+    return response
 
 STRAVA_VERIFY_TOKEN = os.getenv("STRAVA_VERIFY_TOKEN", "STRAVA_INSIGHTS_WEBHOOK_VERIFY_TOKEN")
 
@@ -55,8 +62,13 @@ def index():
 
 @app.route("/health", methods=["GET"])
 def health():
-    """Health check endpoint."""
-    return jsonify({"status": "healthy", "approach": "RAG"})
+    """Health check endpoint with build version information."""
+    return jsonify({
+        "status": "healthy",
+        "version": __version__,
+        "build": BUILD_VERSION,
+        "approach": "RAG"
+    })
 
 
 @app.route("/query", methods=["POST"])
@@ -247,4 +259,5 @@ def clear_cache():
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
+    print(f"[App] Starting Strava Insights RAG ({BUILD_VERSION}) on port {port}...")
     app.run(host="0.0.0.0", port=port, debug=False)

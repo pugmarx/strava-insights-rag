@@ -34,12 +34,15 @@ class TestAppEndpoints(unittest.TestCase):
         self.app.testing = True
 
     def test_health_endpoint(self):
-        """Test /health endpoint returns healthy status."""
+        """Test /health endpoint returns healthy status and build version."""
         response = self.app.get('/health')
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertEqual(data.get("status"), "healthy")
         self.assertEqual(data.get("approach"), "RAG")
+        self.assertIn("version", data)
+        self.assertIn("build", data)
+        self.assertIn("X-App-Version", response.headers)
 
     def test_query_endpoint_empty_payload(self):
         """Test /query returns 400 when question is empty."""

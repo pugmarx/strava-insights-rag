@@ -15,6 +15,7 @@ flowchart LR
 
     subgraph Backend ["Flask Backend"]
         API[API Endpoints]
+        Cache[Tier 1: CacheManager<br/>In-Memory RAM]
         Embed[FastEmbed]
         RAG[RAG & SQL Pipeline]
         Sync[Strava Sync Service]
@@ -23,52 +24,74 @@ flowchart LR
 
     subgraph Storage ["PostgreSQL + pgvector"]
         DB[(Activities & Vectors)]
+        DBCache[(Tier 2: query_cache)]
         Tokens[(OAuth Tokens)]
     end
 
     User <-->|Queries & Dashboard| API
+    API <-->|Exact Hits < 1ms| Cache
+    API --> RAG
+    RAG <-->|Semantic Cache Match >= 0.92| DBCache
+    RAG --> Embed
+    RAG <-->|Vector + SQL Filter| DB
+    RAG --> LLM
+    LLM --> RAG
     Strava -->|Webhooks / Activity Data| Sync
     Sync <-->|OAuth / Refresh| Tokens
     Sync -->|Fetch Activity Details| Strava
     Sync --> Embed
     Embed -->|Store Embeddings| DB
-    API --> RAG
-    RAG --> Embed
-    RAG <-->|Vector + SQL Filter| DB
-    RAG --> LLM
-    LLM --> RAG
+    Sync -->|Year-Scoped Invalidation| Cache
+    Sync -->|Year-Scoped Invalidation| DBCache
 ```
 
 ---
 
 ## Key Interaction Flows
 
-### 1. Asking a Question (RAG Pipeline)
+### 1. Asking a Question (Two-Tier Cached RAG Pipeline)
 
-When you ask a question like *"What was my longest run this month?"*, the app embeds the query, searches PostgreSQL with pgvector, and passes the relevant activities to the LLM to write the response.
+When a question is asked, the backend checks the in-memory cache, then checks PostgreSQL for semantically similar previous answers, and only calls the LLM if there is a cache miss.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor User
     participant API as Flask Backend
+    participant Cache as Tier 1 In-Memory
+    participant DBCache as Tier 2 Postgres (query_cache)
     participant Embed as FastEmbed
     participant DB as Postgres (pgvector)
     participant LLM as LLM (Ollama / Groq / HF)
 
-    User->>API: POST /query {"question": "What was the longest run in 2024?"}
-    API->>Embed: Embed question text
-    Embed-->>API: 384-d vector
-    API->>DB: Cosine search (<=>) + SQL filters
-    DB-->>API: Top matching activities
-    API->>LLM: Prompt (Question + Retrieved Activities context)
-    LLM-->>API: Grounded answer
-    API-->>User: JSON response
+    User->>API: POST /query {"question": "What was the longest hike in October 2024?"}
+    API->>Cache: Check exact in-memory match
+    alt Tier 1 In-Memory Hit (sub-ms)
+        Cache-->>API: Cached response
+        API-->>User: JSON response
+    else Tier 1 Miss
+        API->>Embed: Compute query vector
+        Embed-->>API: 384-d vector
+        API->>DBCache: Cosine match (similarity >= 0.92)
+        alt Tier 2 Semantic Hit (< 20ms)
+            DBCache-->>API: Cached response
+            API->>Cache: Populate Tier 1 RAM
+            API-->>User: JSON response
+        else Tier 2 Miss (Cold Path)
+            API->>DB: Cosine search (<=>) + SQL filters
+            DB-->>API: Matching activities context
+            API->>LLM: Prompt (Question + Context)
+            LLM-->>API: Grounded answer
+            API->>Cache: Store in Tier 1 RAM
+            API->>DBCache: Store in Tier 2 Postgres
+            API-->>User: JSON response
+        end
+    end
 ```
 
-### 2. Syncing Activities (Webhooks / On-Demand)
+### 2. Syncing Activities & Smart Cache Invalidation
 
-When a new workout finishes on Strava (or when you trigger a manual sync), the app pulls the activity metadata, creates an embedding, and stores it in Postgres.
+When a new workout finishes on Strava (or when you trigger a manual sync), the app pulls the activity metadata, creates an embedding, stores it in Postgres, and invalidates only the affected year's cache.
 
 ```mermaid
 sequenceDiagram
@@ -78,13 +101,18 @@ sequenceDiagram
     participant StravaAPI as Strava API
     participant Embed as FastEmbed
     participant DB as Postgres (pgvector)
+    participant Cache as CacheManager (Tier 1 & Tier 2)
 
     Strava->>API: Webhook event / POST /api/sync
     API->>StravaAPI: Fetch full activity details (with OAuth token)
-    StravaAPI-->>API: Activity data (distance, duration, elevation, etc.)
+    StravaAPI-->>API: Activity data (e.g. 2026 workout)
     API->>Embed: Generate text summary & vector embedding
     Embed-->>API: Embedding vector
     API->>DB: Upsert activity record + vector
+    API->>Cache: Invalidate affected year (2026) & relative queries
+    Cache->>Cache: Clear in-memory query & analytics cache
+    Cache->>DB: DELETE FROM query_cache WHERE target_year = 2026 OR NULL
+    Note over Cache,DB: Historical queries (2021-2025) remain 100% cached!
     DB-->>API: OK
 ```
 

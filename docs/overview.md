@@ -121,3 +121,49 @@ WITH (lists = 100);
 - **OAuth Tokens**: Athlete access and refresh tokens are stored in a dedicated `strava_tokens` table.
 - **Auto-Refresh**: If an access token expires, `token_manager.py` fetches a fresh token from Strava's OAuth endpoint and updates PostgreSQL before executing API calls.
 - **Webhooks**: Strava webhook events (`create`, `update`, `delete`) are acknowledged immediately with HTTP 200 and processed asynchronously in background threads.
+
+---
+
+## 7. Two-Tier Semantic Caching
+
+To optimize query latency and eliminate redundant LLM calls on Render's free tier, the system employs a two-tier caching strategy:
+
+1. **Tier 1 (In-Memory `TTLCache`)**: Instant sub-millisecond lookups for text embeddings (1h TTL), exact query strings (30m TTL), and analytics payloads (30m TTL).
+2. **Tier 2 (PostgreSQL `query_cache`)**: Persistent semantic vector caching using `pgvector` cosine similarity ($\ge 0.92$). Rephrased or paraphrased questions match previously answered queries with zero LLM cost.
+3. **Smart Year-Scoped Invalidation**: Closed historical years (`target_year < datetime.now().year`) are tagged with `is_historical = TRUE` and kept permanently cached. Only the active year and floating/relative queries are cleared when new workouts are uploaded.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant API as Flask Backend
+    participant Cache as Tier 1 In-Memory
+    participant DBCache as Tier 2 Postgres (query_cache)
+    participant Embed as FastEmbed
+    participant DB as Postgres (pgvector)
+    participant LLM as LLM (Ollama / Groq / HF)
+
+    User->>API: POST /query (Natural language question)
+    API->>Cache: Check exact in-memory hit
+    alt Tier 1 Hit (< 1ms)
+        Cache-->>API: Cached response
+        API-->>User: JSON response
+    else Tier 1 Miss
+        API->>Embed: Generate 384-d query vector
+        Embed-->>API: Vector
+        API->>DBCache: Cosine match (similarity >= 0.92)
+        alt Tier 2 Semantic Hit (< 20ms)
+            DBCache-->>API: Cached response
+            API->>Cache: Store in RAM
+            API-->>User: JSON response
+        else Tier 2 Miss (Cold Path)
+            API->>DB: Cosine search (<=>) + SQL filters
+            DB-->>API: Retrieved context
+            API->>LLM: Prompt (Question + Context)
+            LLM-->>API: Generated answer
+            API->>Cache: Store in RAM
+            API->>DBCache: Store in Postgres query_cache
+            API-->>User: JSON response
+        end
+    end
+```

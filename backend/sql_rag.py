@@ -8,6 +8,8 @@ from db_pool import get_pool
 from llm_client import LLMClient
 
 # Load environment variables
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(project_root, ".env"))
 load_dotenv()
 
 # Read database credentials
@@ -230,6 +232,7 @@ def retrieve_similar_activities(user_query, top_k=5):
         # Detect query patterns and build appropriate SQL
         base_select = """
             SELECT activity_id, activity_type, distance, duration, timestamp,
+                   COALESCE(elevation_gain, 0) as elevation_gain,
                    1 - (embedding <=> %s::vector) as similarity_score
             FROM activities
         """
@@ -263,7 +266,9 @@ def retrieve_similar_activities(user_query, top_k=5):
         is_listing_query = any(k in query_lower for k in ['list', 'show', 'all', 'activities in', 'history', 'log', 'what did i do', 'how many', 'summary', 'everything']) or bool(time_filters)
         
         # 4. Handle sorting logic
-        if any(word in query_lower for word in ['longest', 'best', 'top', 'max', 'most']) and 'similar' not in query_lower:
+        if any(word in query_lower for word in ['climb', 'climbs', 'climbing', 'elevation', 'mountain', 'hill', 'hilly', 'ascent']):
+            order_by = "elevation_gain DESC"
+        elif any(word in query_lower for word in ['longest', 'best', 'top', 'max', 'most']) and 'similar' not in query_lower:
             if any(word in query_lower for word in ['workout', 'workouts', 'weight', 'strength', 'gym', 'training']):
                 order_by = "duration DESC"
             else:
@@ -301,19 +306,32 @@ def retrieve_similar_activities(user_query, top_k=5):
         # Convert to list of dictionaries
         activities = []
         for row in results:
+            if len(row) >= 7:
+                act_id, act_type, dist, dur, ts, elev, score = row[:7]
+            elif len(row) == 6:
+                act_id, act_type, dist, dur, ts, score = row
+                elev = 0.0
+            else:
+                act_id, act_type, dist, dur, ts = row[:5]
+                elev, score = 0.0, 1.0
+
             activities.append({
-                'activity_id': row[0],
-                'activity_type': row[1],
-                'distance': row[2],
-                'duration': row[3],
-                'timestamp': row[4],
-                'similarity_score': row[5]
+                'activity_id': act_id,
+                'activity_type': act_type,
+                'distance': dist,
+                'duration': dur,
+                'timestamp': ts,
+                'elevation_gain': elev or 0.0,
+                'similarity_score': score
             })
         
         return activities
         
     except psycopg2.Error as e:
         print(f"Error in vector search: {e}")
+        return []
+    except Exception as e:
+        print(f"Unexpected error in vector search: {e}")
         return []
     finally:
         cursor.close()
@@ -353,6 +371,10 @@ def build_context(retrieved_activities):
         else:
             duration_str = f"{minutes}m {seconds}s"
         
+        # Format elevation gain
+        elevation_meters = activity.get('elevation_gain', 0)
+        elev_str = f", Elevation Gain: {elevation_meters:.0f}m" if elevation_meters and elevation_meters > 0 else ""
+        
         # Calculate pace for running
         pace_str = ""
         if activity['activity_type'] in ['Run', 'TrailRun', 'VirtualRun'] and distance_meters and distance_meters > 0:
@@ -369,7 +391,7 @@ def build_context(retrieved_activities):
         
         context_lines.append(
             f"{i}. {activity['activity_type']} on {date_str} (ID: {activity['activity_id']}) - "
-            f"Distance: {distance_str}, Duration: {duration_str}{pace_str}{speed_str}"
+            f"Distance: {distance_str}, Duration: {duration_str}{elev_str}{pace_str}{speed_str}"
         )
     
     return "\n".join(context_lines)
@@ -391,16 +413,18 @@ Retrieved Activity Context:
 
 User Question: {user_query}
 
-Instructions:
+Instructions & Guardrails:
+- GROUNDING GUARDRAIL: Base your answers strictly on the Retrieved Activity Context provided above. Do NOT make up or assume activities, dates, distances, or metrics that are not present. If the requested data is not found in the context, explicitly state that no matching activities were found.
 - Use the activity data provided above to answer the question
 - When answering relative time queries (like 'this month', 'this year', 'last month'), refer to Today's Date ({current_date_str})
 - ALWAYS state the specific activity type for each item (e.g. '- Ride on YYYY-MM-DD: ...', '- Hike on YYYY-MM-DD: ...', '- Run on YYYY-MM-DD: ...', '- Workout on YYYY-MM-DD: ...'). NEVER use the generic word 'Activity' when the specific type is known.
 - Group activities by their activity type (e.g. Rides, Runs, Hikes, Workouts) if multiple types exist
-- Enlist each qualifying activity as a clean unindented bullet point (- [Type] on YYYY-MM-DD: Distance, Duration, Speed/Pace)
+- Enlist each qualifying activity as a clean unindented bullet point (- [Type] on YYYY-MM-DD: Distance, Elevation Gain if applicable, Duration, Speed/Pace)
+- When analyzing climbing or elevation questions, reference Elevation Gain and highlight notable climbs
 - For WeightTraining and Workout activities, focus on duration as the main performance metric
 - For running activities, pace (min/km) is often more meaningful than speed
-- For cycling activities, consider both distance and speed
-- Include dates, distances, and performance metrics in your analysis
+- For cycling activities, consider distance, elevation gain, and speed
+- Include dates, distances, elevation, and performance metrics in your analysis
 - If comparing activities across time periods, highlight the differences
 - Don't mention similarity scores or technical details about retrieval
 - Keep formatting clean, factual, and concise without using emojis

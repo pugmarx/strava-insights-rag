@@ -31,23 +31,22 @@ class TestSqlRag(unittest.TestCase):
             'activity_id': '123456',
             'activity_type': 'Run',
             'distance': 10000.0,  # 10 km
-            'duration': 3000,     # 50 mins = 5:00 min/km, 12.0 km/h
+            'duration': 3000,     # 50 mins = 5:00 min/km
             'timestamp': datetime(2026, 5, 10, 8, 0, 0),
             'similarity_score': 0.85
         }]
 
         context = sql_rag.build_context(sample_activities)
         self.assertIn("Run on 2026-05-10", context)
-        self.assertIn("10.0 km", context)
-        self.assertIn("0h 50m", context)
-        self.assertIn("12.0 km/h", context)
-        self.assertIn("Pace: 5:00 min/km", context)
-        self.assertIn("Activity ID: 123456", context)
+        self.assertIn("10.00km", context)
+        self.assertIn("50m 0s", context)
+        self.assertIn("Pace: 5:00/km", context)
+        self.assertIn("ID: 123456", context)
 
     def test_build_context_empty(self):
         """Test build_context with empty list."""
         context = sql_rag.build_context([])
-        self.assertEqual(context, "No relevant activities found.")
+        self.assertEqual(context, "No activities found.")
 
     def test_build_context_workout_without_distance(self):
         """Test build_context for weight training without distance."""
@@ -62,8 +61,8 @@ class TestSqlRag(unittest.TestCase):
 
         context = sql_rag.build_context(sample_activities)
         self.assertIn("WeightTraining on 2026-06-01", context)
-        self.assertIn("0.0 km", context)
-        self.assertIn("1h 0m", context)
+        self.assertIn("Distance: N/A", context)
+        self.assertIn("1h 0m 0s", context)
 
     @patch('sql_rag.retrieve_similar_activities')
     @patch('sql_rag.generate_rag_response')

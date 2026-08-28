@@ -50,6 +50,17 @@ class TestAppEndpoints(unittest.TestCase):
         data = json.loads(response.data)
         self.assertIn("error", data)
 
+    def test_query_endpoint_too_long(self):
+        """Test /query returns 400 when question exceeds 500 characters."""
+        long_question = "run " * 150
+        response = self.app.post('/query',
+                                 data=json.dumps({"question": long_question}),
+                                 content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data)
+        self.assertIn("error", data)
+        self.assertIn("too long", data["error"])
+
     @patch('app.handle_rag_query')
     def test_query_endpoint_success(self, mock_handle_rag):
         """Test /query endpoint returns 200 with answer."""

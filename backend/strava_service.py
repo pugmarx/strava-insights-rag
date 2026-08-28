@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from token_manager import get_valid_access_token, get_db_connection, ATHLETE_ID
 from sql_rag import compute_embedding
 
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(project_root, ".env"))
 load_dotenv()
 
 STRAVA_API_BASE = "https://www.strava.com/api/v3"
@@ -27,7 +29,9 @@ def format_activity_text(activity):
     act_type = activity.get("type", "Workout")
     distance = activity.get("distance", 0)
     elapsed_time = activity.get("elapsed_time", 0)
-    return f"{name} {act_type} {distance} meters in {elapsed_time} seconds"
+    elevation = activity.get("total_elevation_gain", 0)
+    elev_str = f" with {elevation:.0f}m elevation gain" if elevation and elevation > 0 else ""
+    return f"{name} {act_type} {distance} meters{elev_str} in {elapsed_time} seconds"
 
 
 def fetch_activity_from_strava(activity_id):
@@ -53,17 +57,19 @@ def save_activity_to_db(activity_data):
     embedding = compute_embedding(text)
     timestamp = parse_strava_timestamp(activity_data.get("start_date"))
     user_id = str(activity_data.get("athlete", {}).get("id") or ATHLETE_ID or "user")
+    elevation_gain = float(activity_data.get("total_elevation_gain") or 0.0)
 
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO activities (activity_id, user_id, activity_type, distance, duration, timestamp, embedding)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO activities (activity_id, user_id, activity_type, distance, duration, elevation_gain, timestamp, embedding)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (activity_id) DO UPDATE SET
                     user_id = EXCLUDED.user_id,
                     activity_type = EXCLUDED.activity_type,
                     distance = EXCLUDED.distance,
                     duration = EXCLUDED.duration,
+                    elevation_gain = EXCLUDED.elevation_gain,
                     timestamp = EXCLUDED.timestamp,
                     embedding = EXCLUDED.embedding
             """, (
@@ -72,6 +78,7 @@ def save_activity_to_db(activity_data):
                 activity_data.get("type", "Workout"),
                 activity_data.get("distance", 0.0),
                 activity_data.get("elapsed_time", 0),
+                elevation_gain,
                 timestamp,
                 embedding
             ))

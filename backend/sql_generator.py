@@ -7,6 +7,8 @@ from db_pool import get_pool
 from llm_client import LLMClient
 
 # Load environment variables
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(project_root, ".env"))
 load_dotenv()
 
 # Read database credentials
@@ -69,8 +71,9 @@ def generate_sql_query(user_question):
     CREATE TABLE activities (
         activity_id BIGINT PRIMARY KEY,
         activity_type VARCHAR(50),
-        distance DOUBLE PRECISION,
-        duration INTEGER,
+        distance DOUBLE PRECISION,  -- meters
+        duration INTEGER,           -- seconds
+        elevation_gain DOUBLE PRECISION,  -- meters climbed
         timestamp TIMESTAMP,
         embedding VECTOR(384)
     );
@@ -88,9 +91,10 @@ def generate_sql_query(user_question):
       - 'this year' means: EXTRACT(YEAR FROM timestamp) = {current_year} (or timestamp >= DATE_TRUNC('year', CURRENT_DATE))
       - 'last year' means: EXTRACT(YEAR FROM timestamp) = {current_year - 1}
       - 'this month' means: EXTRACT(YEAR FROM timestamp) = {current_year} AND EXTRACT(MONTH FROM timestamp) = {current_month_num} (or timestamp >= DATE_TRUNC('month', CURRENT_DATE))
-    - Use `distance` and `duration` for activity performance queries.
+    - Use `distance`, `duration`, and `elevation_gain` for activity performance queries.
+    - For climbing/elevation queries ('biggest climb', 'most elevation', 'hilliest ride'), ORDER BY elevation_gain DESC.
     - Use `embedding <=> embedding` for cosine similarity queries.
-    - Always return `activity_id`, `activity_type`, `distance`, `duration`, and `timestamp` in the SELECT statement.
+    - Always return `activity_id`, `activity_type`, `distance`, `duration`, `elevation_gain`, and `timestamp` in the SELECT statement when available.
     - PostgreSQL does **not support** YEAR(timestamp). Instead, use: EXTRACT(YEAR FROM "timestamp")
     - Same for month: use EXTRACT(MONTH FROM "timestamp")
     - Use double quotes for column names when needed (like "timestamp")
@@ -102,10 +106,19 @@ def generate_sql_query(user_question):
     ### Example 1: Find my longest run
     User Question: "What was my longest run?"
     SQL Query:
-    SELECT activity_id, activity_type, distance, duration, timestamp 
+    SELECT activity_id, activity_type, distance, duration, elevation_gain, timestamp 
     FROM activities 
     WHERE activity_type = 'Run' 
     ORDER BY distance DESC 
+    LIMIT 1;
+
+    ### Example 2: Find my biggest climb
+    User Question: "What was my ride with the most elevation gain?"
+    SQL Query:
+    SELECT activity_id, activity_type, distance, duration, elevation_gain, timestamp 
+    FROM activities 
+    WHERE activity_type = 'Ride' 
+    ORDER BY elevation_gain DESC 
     LIMIT 1;
     
     ### Example 2: How many rides did I do this year?
@@ -172,6 +185,8 @@ def format_results(results, cursor_description):
                     formatted_row["Duration"] = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
                 else:
                     formatted_row["Duration"] = "-"
+            elif col == "elevation_gain":
+                formatted_row["Elevation Gain"] = f"{value:.0f} m" if value is not None and value > 0 else "-"
             elif col == "timestamp":
                 if isinstance(value, str):
                     try:
@@ -193,8 +208,46 @@ def format_results(results, cursor_description):
     return formatted
 
 
+FORBIDDEN_SQL_PATTERNS = [
+    "drop", "delete", "update", "insert", "alter", "truncate",
+    "grant", "revoke", "create", "strava_tokens"
+]
+
+def is_safe_sql(sql_query: str) -> tuple:
+    """
+    Validate that the generated SQL is a safe, read-only SELECT query.
+    Returns (is_safe: bool, reason: str).
+    """
+    if not sql_query or not isinstance(sql_query, str):
+        return False, "Query must be a non-empty string."
+
+    cleaned = sql_query.strip().rstrip(";").strip()
+
+    # 1. Reject statement chaining (e.g. SELECT ...; DROP ...)
+    if ";" in cleaned:
+        return False, "Multiple SQL statements are not permitted."
+
+    # 2. Must start with SELECT or WITH (for CTEs)
+    lower_query = cleaned.lower()
+    if not (lower_query.startswith("select") or lower_query.startswith("with")):
+        return False, "Only read-only SELECT queries are allowed."
+
+    # 3. Block destructive keywords and access to sensitive tables
+    tokens = set(lower_query.replace("(", " ").replace(")", " ").replace(",", " ").split())
+    for forbidden in FORBIDDEN_SQL_PATTERNS:
+        if forbidden in tokens or forbidden in lower_query:
+            return False, f"Forbidden SQL operation or table detected: '{forbidden}'."
+
+    return True, ""
+
+
 def execute_sql_query(sql_query):
-    """Execute the generated SQL query and return formatted results."""
+    """Execute the generated SQL query with guardrail validation and return formatted results."""
+    is_safe, reason = is_safe_sql(sql_query)
+    if not is_safe:
+        print(f"[SQL Guardrail] Blocked unsafe SQL query: {reason} | Query: {sql_query}")
+        return None
+
     conn = connect_db()
     if not conn:
         return None

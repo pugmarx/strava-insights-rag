@@ -5,6 +5,8 @@ import requests
 import psycopg2
 from dotenv import load_dotenv
 
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(project_root, ".env"))
 load_dotenv()
 
 TOKEN_URL = "https://www.strava.com/api/v3/oauth/token"

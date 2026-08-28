@@ -4,24 +4,55 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Strava Activity Insights</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
   <style>
     :root {
-      --bg-base: #0b0f17;
-      --bg-surface: #141b26;
-      --bg-surface-hover: #1c2636;
-      --bg-surface-elevated: #1f2a3c;
-      --border-subtle: #243042;
-      --border-focus: #3b82f6;
-      --text-main: #f1f5f9;
-      --text-muted: #94a3b8;
-      --text-dim: #64748b;
+      /* Strava Brand Identity */
       --accent: #fc4c02;
-      --primary: #3b82f6;
-      --primary-hover: #2563eb;
+      --accent-hover: #e34402;
+      --primary: #fc4c02;
+      --primary-hover: #e34402;
+      --strava-orange: #fc4c02;
+      --strava-blue: #0284c7;
+      --strava-emerald: #10b981;
+      --strava-amber: #f59e0b;
+      --strava-purple: #8b5cf6;
+
+      /* Strava Dark Theme (Default) */
+      --bg-base: #121215;
+      --bg-surface: #1a1a22;
+      --bg-surface-hover: #22222d;
+      --bg-surface-elevated: #282835;
+      --border-subtle: #2e2e3e;
+      --border-focus: #fc4c02;
+      --text-main: #f4f4f7;
+      --text-muted: #a1a1aa;
+      --text-dim: #71717a;
+      --chart-grid: rgba(255, 255, 255, 0.08);
+      --chart-tick: #71717a;
       --radius-sm: 6px;
       --radius-md: 10px;
       --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    html.theme-light,
+    body.theme-light,
+    :root.theme-light {
+      /* Strava Light Theme */
+      --bg-base: #f7f7f9;
+      --bg-surface: #ffffff;
+      --bg-surface-hover: #f1f3f5;
+      --bg-surface-elevated: #ffffff;
+      --border-subtle: #e2e8f0;
+      --border-focus: #fc4c02;
+      --text-main: #18181b;
+      --text-muted: #52525b;
+      --text-dim: #94a3b8;
+      --chart-grid: rgba(0, 0, 0, 0.06);
+      --chart-tick: #64748b;
     }
 
     * {
@@ -35,9 +66,12 @@
       background-color: var(--bg-base);
       color: var(--text-main);
       min-height: 100vh;
+      display: flex;
+      flex-direction: column;
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
-      padding: 2rem 1.5rem;
+      padding: 2rem 1.5rem 1rem;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     .app-layout {
@@ -45,6 +79,8 @@
       margin: 0 auto;
       display: flex;
       flex-direction: column;
+      flex: 1;
+      width: 100%;
       gap: 1.5rem;
     }
 
@@ -457,6 +493,230 @@
       margin-bottom: 0.75rem;
     }
 
+    /* Top Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .nav-tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .nav-tab-btn:hover {
+      background: var(--bg-surface-hover);
+      color: var(--text-main);
+    }
+
+    .nav-tab-btn.active {
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+      border-color: var(--border-subtle);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Breakthrough Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+    }
+
+    .metric-card.climbing::before { background: #f59e0b; }
+    .metric-card.speed::before { background: #10b981; }
+    .metric-card.endurance::before { background: #3b82f6; }
+    .metric-card.total::before { background: #64748b; }
+
+    .metric-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .metric-val {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .metric-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Chart Card */
+    .chart-container {
+      position: relative;
+      height: 420px;
+      width: 100%;
+      margin-top: 0.75rem;
+    }
+
+    /* Inspector Card */
+    .inspector-card {
+      display: none;
+      margin-top: 1rem;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+    }
+
+    .inspector-card.active {
+      display: block;
+    }
+
+    /* Chart Type Switcher Toolbar */
+    .chart-type-toolbar {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: var(--bg-base);
+      padding: 3px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .chart-type-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.4rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .chart-type-btn:hover {
+      background: var(--bg-surface-hover);
+      color: var(--text-main);
+    }
+
+    .chart-type-btn.active {
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-reset-zoom {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 0.4rem 0.55rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .btn-reset-zoom:hover {
+      background: var(--bg-surface-hover);
+      color: var(--text-main);
+      border-color: var(--border-focus);
+    }
+
+    /* App Footer */
+    .app-footer {
+      text-align: center;
+      padding: 1.5rem 0 1rem;
+      font-size: 0.8125rem;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border-subtle);
+      margin-top: auto;
+    }
+
+    .app-footer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+
+    .app-footer a:hover {
+      text-decoration: underline;
+      color: var(--accent-hover);
+    }
+
+    .syncing-spin {
+      display: inline-block;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 1rem 0.75rem;
+      }
+      header {
+        flex-direction: row;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .brand-title h1 {
+        font-size: 1.05rem;
+      }
+      .brand-title p {
+        display: none;
+      }
+      .header-actions {
+        gap: 0.4rem;
+      }
+      .nav-tabs {
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 0.25rem;
+      }
+    }
+
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
@@ -473,17 +733,30 @@
         </div>
       </div>
       <div class="header-actions">
-        <div class="stats-badge" id="statsBadge">
-          <span>Indexed:</span>
-          <strong id="activityCount">-</strong>
-        </div>
-        <button class="btn btn-secondary" id="syncButton">
-          <span id="syncBtnText">Sync Strava</span>
+        <button class="btn btn-secondary" id="syncButton" title="Sync Strava Activities" style="padding: 0.5rem 0.625rem; font-size: 1rem; line-height: 1;">
+          <span id="syncBtnText">🔄</span>
+        </button>
+        <button class="btn btn-secondary" id="themeToggleBtn" title="Toggle Light/Dark Theme" style="padding: 0.5rem 0.625rem; font-size: 1rem; line-height: 1;">
+          <span id="themeIcon">☀️</span>
         </button>
       </div>
     </header>
 
-    <div class="grid-container">
+    <!-- Top Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="nav-tab-btn active" id="tabBtnSearch">
+        <span>🔍</span> Query
+      </button>
+      <button class="nav-tab-btn" id="tabBtnAnomalies">
+        <span>📊</span> Anomalies
+      </button>
+      <button class="nav-tab-btn" id="tabBtnBreakthroughs">
+        <span>⛰️</span> Climbing
+      </button>
+    </div>
+
+    <!-- Search View -->
+    <div id="viewSearch" class="grid-container">
       <main>
         <div class="card query-card">
           <div class="input-row">
@@ -536,7 +809,7 @@
             <button class="chip-btn" data-query="What was my longest run?" data-mode="hybrid">What was my longest run?</button>
             <button class="chip-btn" data-query="Tell me about my best running activities" data-mode="rag">Tell me about my best running activities</button>
             <button class="chip-btn" data-query="What was my longest bike ride?" data-mode="hybrid">What was my longest bike ride?</button>
-            <button class="chip-btn" data-query="Show me activities similar to my hardest workout" data-mode="rag">Show activities like my hardest workout</button>
+            <button class="chip-btn" data-query="Show my rides with the most elevation gain" data-mode="rag">Show rides with most elevation gain</button>
             <button class="chip-btn" data-query="How many rides did I do this year?" data-mode="hybrid">How many rides did I do this year?</button>
           </div>
         </div>
@@ -550,6 +823,192 @@
         </div>
       </aside>
     </div>
+
+    <!-- Anomaly & Outlier Explorer View -->
+    <div id="viewAnomalies" style="display: none; flex-direction: column; gap: 1rem;">
+      <div class="metrics-grid">
+        <div class="metric-card speed">
+          <div class="metric-label">⚡ Speed & Pace Outliers</div>
+          <div class="metric-val" id="countAnomalySpeed">-</div>
+          <div class="metric-sub">Top pace efficiency cluster</div>
+        </div>
+        <div class="metric-card climbing">
+          <div class="metric-label">⛰️ Climbing Ceilings</div>
+          <div class="metric-val" id="countAnomalyClimbing">-</div>
+          <div class="metric-sub">Extreme elevation outliers</div>
+        </div>
+        <div class="metric-card endurance">
+          <div class="metric-label">⏳ Endurance Outliers</div>
+          <div class="metric-val" id="countAnomalyEndurance">-</div>
+          <div class="metric-sub">Top statistical duration</div>
+        </div>
+        <div class="metric-card total">
+          <div class="metric-label">💤 Recovery & Slumps</div>
+          <div class="metric-val" id="countAnomalyRecovery">-</div>
+          <div class="metric-sub">Depressed pace days</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.5rem;">
+          <h2 style="font-size: 1.05rem; font-weight: 600;">Anomaly & Outlier Explorer</h2>
+          
+          <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;">
+            <div class="chart-type-toolbar" id="anomChartTypeToolbar">
+              <button class="chart-type-btn active" data-chart-type="scatter" title="Scatter & Outlier View">
+                <span>🔵</span>
+              </button>
+              <button class="chart-type-btn" data-chart-type="trend" title="Performance Trendline">
+                <span>📈</span>
+              </button>
+              <button class="chart-type-btn" data-chart-type="bars" title="Monthly Aggregation Bars">
+                <span>📊</span>
+              </button>
+              <button class="chart-type-btn" data-chart-type="doughnut" title="Breakthrough Donut Breakdown">
+                <span>🍩</span>
+              </button>
+            </div>
+
+            <button class="btn-reset-zoom" id="btnResetAnomZoom" title="Reset Zoom">
+              <span>↺</span>
+            </button>
+
+            <select id="anomalyDimSelect" style="background: var(--bg-surface-elevated); color: var(--text-main); border: 1px solid var(--border-subtle); padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.8125rem; font-family: inherit;">
+              <option value="speed_vs_dist">Speed vs. Distance</option>
+              <option value="dist_vs_dur">Distance vs. Duration</option>
+              <option value="elev_vs_dist">Elevation vs. Distance</option>
+              <option value="timeline">Timeline (2024–2026)</option>
+            </select>
+
+            <div class="segmented-control">
+              <div class="segment-option">
+                <input type="radio" id="anomFilterAll" name="anomSportFilter" value="all" checked>
+                <label for="anomFilterAll">All</label>
+              </div>
+              <div class="segment-option">
+                <input type="radio" id="anomFilterRide" name="anomSportFilter" value="Ride">
+                <label for="anomFilterRide">Rides</label>
+              </div>
+              <div class="segment-option">
+                <input type="radio" id="anomFilterRun" name="anomSportFilter" value="Run">
+                <label for="anomFilterRun">Runs</label>
+              </div>
+              <div class="segment-option">
+                <input type="radio" id="anomFilterHike" name="anomSportFilter" value="Hike">
+                <label for="anomFilterHike">Hikes</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="anomalyChartCanvas"></canvas>
+        </div>
+      </div>
+
+      <div id="anomalyInspectorCard" class="inspector-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <div id="anomInspectBadge" style="display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.5rem; background: #334155; color: #fff;"></div>
+            <h3 id="anomInspectTitle" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);"></h3>
+            <div id="anomInspectStats" style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem;"></div>
+          </div>
+          <button class="btn btn-primary" id="btnAskAiAboutAnomaly">
+            <span>✨ Ask AI to Explain this Outlier</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Breakthroughs & Climbing Radar View -->
+    <div id="viewBreakthroughs" style="display: none; flex-direction: column; gap: 1rem;">
+      <div class="metrics-grid">
+        <div class="metric-card climbing">
+          <div class="metric-label">Mountain Kings</div>
+          <div class="metric-val" id="countClimbing">-</div>
+          <div class="metric-sub">Top vertical ascent rates (VAM)</div>
+        </div>
+        <div class="metric-card speed">
+          <div class="metric-label">Speed Breakthroughs</div>
+          <div class="metric-val" id="countSpeed">-</div>
+          <div class="metric-sub">Pace-to-distance outliers</div>
+        </div>
+        <div class="metric-card endurance">
+          <div class="metric-label">Epic Endurance</div>
+          <div class="metric-val" id="countEndurance">-</div>
+          <div class="metric-sub">Statistical duration ceilings</div>
+        </div>
+        <div class="metric-card total">
+          <div class="metric-label">Total Analyzed</div>
+          <div class="metric-val" id="countTotal">-</div>
+          <div class="metric-sub">Indexed activities</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.5rem;">
+          <h2 style="font-size: 1.05rem; font-weight: 600;">Climbing Radar</h2>
+
+          <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;">
+            <div class="chart-type-toolbar" id="radarChartTypeToolbar">
+              <button class="chart-type-btn active" data-chart-type="bubble" title="Climbing Bubble Radar">
+                <span>⛰️</span>
+              </button>
+              <button class="chart-type-btn" data-chart-type="trend" title="Elevation Trendline">
+                <span>📈</span>
+              </button>
+              <button class="chart-type-btn" data-chart-type="bars" title="Monthly Elevation Climbed">
+                <span>📊</span>
+              </button>
+            </div>
+
+            <button class="btn-reset-zoom" id="btnResetRadarZoom" title="Reset Zoom">
+              <span>↺</span>
+            </button>
+
+            <div class="segmented-control">
+              <div class="segment-option">
+                <input type="radio" id="filterAll" name="chartFilter" value="all" checked>
+                <label for="filterAll">All</label>
+              </div>
+              <div class="segment-option">
+                <input type="radio" id="filterRide" name="chartFilter" value="Ride">
+                <label for="filterRide">Rides</label>
+              </div>
+              <div class="segment-option">
+                <input type="radio" id="filterRun" name="chartFilter" value="Run">
+                <label for="filterRun">Runs</label>
+              </div>
+              <div class="segment-option">
+                <input type="radio" id="filterHike" name="chartFilter" value="Hike">
+                <label for="filterHike">Hikes</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="breakthroughChart"></canvas>
+        </div>
+      </div>
+
+      <div id="inspectorCard" class="inspector-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <div id="inspectBadge" style="display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.5rem; background: #334155; color: #fff;"></div>
+            <h3 id="inspectTitle" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);"></h3>
+            <div id="inspectStats" style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem;"></div>
+          </div>
+          <button class="btn btn-primary" id="btnAskAiAboutWorkout">
+            <span>✨ Ask AI to Analyze this Workout</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      <span>Made with ❤️ by <a href="https://github.com/pugmarx" target="_blank" rel="noopener noreferrer">pugmarx</a></span>
+    </footer>
   </div>
 
   <script>
@@ -739,25 +1198,27 @@
         .then(data => {
           if (data.total_activities !== undefined) {
             const count = data.total_activities.toLocaleString();
-            activityCount.textContent = count;
-            dbTotalCount.textContent = count;
-            if (data.latest_timestamp) {
-              const dt = new Date(data.latest_timestamp);
-              dbLatestDate.textContent = dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-            } else {
-              dbLatestDate.textContent = 'None';
+            if (dbTotalCount) dbTotalCount.textContent = count;
+            if (dbLatestDate) {
+              if (data.latest_timestamp) {
+                const dt = new Date(data.latest_timestamp);
+                dbLatestDate.textContent = dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+              } else {
+                dbLatestDate.textContent = 'None';
+              }
             }
           }
         })
-        .catch(() => {
-          activityCount.textContent = "-";
+        .catch(err => {
+          console.error("Error loading DB stats:", err);
+          if (dbTotalCount) dbTotalCount.textContent = "-";
         });
     }
 
     // Sync button
     syncButton.addEventListener("click", () => {
       syncButton.disabled = true;
-      syncBtnText.textContent = "Syncing...";
+      syncBtnText.classList.add("syncing-spin");
       syncStatusMessage.textContent = "Connecting to Strava...";
 
       fetch('/api/sync', {
@@ -768,7 +1229,7 @@
       .then(res => res.json())
       .then(data => {
         syncButton.disabled = false;
-        syncBtnText.textContent = "Sync Strava";
+        syncBtnText.classList.remove("syncing-spin");
         if (data.status === "success") {
           syncStatusMessage.textContent = `Synced ${data.synced_count} activities`;
           loadStats();
@@ -779,13 +1240,817 @@
       })
       .catch(err => {
         syncButton.disabled = false;
-        syncBtnText.textContent = "Sync Strava";
+        syncBtnText.classList.remove("syncing-spin");
         syncStatusMessage.textContent = `Error: ${err.message}`;
       });
     });
 
     // Initial load
     loadStats();
+
+    // ---------------------------------------------------------------------------
+    // Light / Dark Theme Switcher
+    // ---------------------------------------------------------------------------
+    const themeToggleBtn = document.getElementById("themeToggleBtn");
+    const themeIcon = document.getElementById("themeIcon");
+
+    function applyTheme(isLight) {
+      if (isLight) {
+        document.documentElement.classList.add("theme-light");
+        document.body.classList.add("theme-light");
+        themeIcon.textContent = "🌙";
+        themeToggleBtn.title = "Switch to Dark mode";
+        localStorage.setItem("strava_insights_theme", "light");
+      } else {
+        document.documentElement.classList.remove("theme-light");
+        document.body.classList.remove("theme-light");
+        themeIcon.textContent = "☀️";
+        themeToggleBtn.title = "Switch to Light mode";
+        localStorage.setItem("strava_insights_theme", "dark");
+      }
+
+      // Safely refresh charts if currently visible
+      try {
+        if (breakthroughChartInstance && viewBreakthroughs && viewBreakthroughs.style.display !== "none") {
+          renderBreakthroughChart();
+        }
+        if (anomalyChartInstance && viewAnomalies && viewAnomalies.style.display !== "none") {
+          renderAnomalyChart();
+        }
+      } catch (e) {
+        console.warn("Chart refresh deferred:", e);
+      }
+    }
+
+    const savedTheme = localStorage.getItem("strava_insights_theme");
+    applyTheme(savedTheme === "light");
+
+    themeToggleBtn.addEventListener("click", () => {
+      const isCurrentlyLight = document.body.classList.contains("theme-light");
+      applyTheme(!isCurrentlyLight);
+    });
+
+    function getChartThemeColors() {
+      const isLight = document.body.classList.contains("theme-light");
+      return {
+        grid: isLight ? "rgba(0, 0, 0, 0.06)" : "rgba(255, 255, 255, 0.08)",
+        ticks: isLight ? "#64748b" : "#71717a",
+        tooltipBg: isLight ? "#ffffff" : "#1a1a22",
+        tooltipTitle: isLight ? "#18181b" : "#f4f4f7",
+        tooltipBody: isLight ? "#52525b" : "#a1a1aa",
+        tooltipBorder: isLight ? "#e2e8f0" : "#2e2e3e"
+      };
+    }
+
+    // ---------------------------------------------------------------------------
+    // 3-Way Navigation Tabs
+    // ---------------------------------------------------------------------------
+    const tabBtnSearch = document.getElementById("tabBtnSearch");
+    const tabBtnAnomalies = document.getElementById("tabBtnAnomalies");
+    const tabBtnBreakthroughs = document.getElementById("tabBtnBreakthroughs");
+    const viewSearch = document.getElementById("viewSearch");
+    const viewAnomalies = document.getElementById("viewAnomalies");
+    const viewBreakthroughs = document.getElementById("viewBreakthroughs");
+
+    function activateTab(activeBtn, activeView) {
+      [tabBtnSearch, tabBtnAnomalies, tabBtnBreakthroughs].forEach(b => b.classList.remove("active"));
+      [viewSearch, viewAnomalies, viewBreakthroughs].forEach(v => v.style.display = "none");
+
+      activeBtn.classList.add("active");
+      activeView.style.display = activeView === viewSearch ? "grid" : "flex";
+    }
+
+    tabBtnSearch.addEventListener("click", () => activateTab(tabBtnSearch, viewSearch));
+    
+    tabBtnAnomalies.addEventListener("click", () => {
+      activateTab(tabBtnAnomalies, viewAnomalies);
+      loadAnalyticsData();
+    });
+
+    tabBtnBreakthroughs.addEventListener("click", () => {
+      activateTab(tabBtnBreakthroughs, viewBreakthroughs);
+      loadAnalyticsData();
+    });
+
+    // ---------------------------------------------------------------------------
+    // Shared Analytics Data & Cache
+    // ---------------------------------------------------------------------------
+    let allAnalyticsData = [];
+    let anomalyChartInstance = null;
+    let breakthroughChartInstance = null;
+    let selectedAnomalyItem = null;
+    let selectedBreakthroughItem = null;
+
+    function loadAnalyticsData() {
+      if (allAnalyticsData.length > 0) {
+        renderAnomalyChart();
+        renderBreakthroughChart();
+        return;
+      }
+
+      fetch('/api/analytics/breakthroughs')
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) {
+            showStatus(`Analytics error: ${data.error}`, "error");
+            return;
+          }
+
+          allAnalyticsData = data.activities || [];
+
+          if (data.summary) {
+            // Update Anomaly counters
+            document.getElementById("countAnomalySpeed").textContent = data.summary.speed_breakthroughs || 0;
+            document.getElementById("countAnomalyClimbing").textContent = data.summary.climbing_breakthroughs || 0;
+            document.getElementById("countAnomalyEndurance").textContent = data.summary.ultra_endurance || 0;
+            document.getElementById("countAnomalyRecovery").textContent = data.summary.recovery || 0;
+
+            // Update Breakthrough counters
+            document.getElementById("countClimbing").textContent = data.summary.climbing_breakthroughs || 0;
+            document.getElementById("countSpeed").textContent = data.summary.speed_breakthroughs || 0;
+            document.getElementById("countEndurance").textContent = data.summary.ultra_endurance || 0;
+            document.getElementById("countTotal").textContent = (data.summary.total || 0).toLocaleString();
+          }
+
+          renderAnomalyChart();
+          renderBreakthroughChart();
+        })
+        .catch(err => {
+          showStatus(`Failed to load analytics: ${err.message}`, "error");
+        });
+    }
+
+    // ---------------------------------------------------------------------------
+    // Multi-Dimensional Anomaly Explorer (Chart.js + Zoom + Multiple Types)
+    // ---------------------------------------------------------------------------
+    const anomalyDimSelect = document.getElementById("anomalyDimSelect");
+    const anomalyInspectorCard = document.getElementById("anomalyInspectorCard");
+    const anomInspectBadge = document.getElementById("anomInspectBadge");
+    const anomInspectTitle = document.getElementById("anomInspectTitle");
+    const anomInspectStats = document.getElementById("anomInspectStats");
+    const btnAskAiAboutAnomaly = document.getElementById("btnAskAiAboutAnomaly");
+    const btnResetAnomZoom = document.getElementById("btnResetAnomZoom");
+
+    let currentAnomChartType = "scatter";
+    let currentRadarChartType = "bubble";
+
+    // Chart Type Toolbars Listener
+    document.querySelectorAll("#anomChartTypeToolbar .chart-type-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#anomChartTypeToolbar .chart-type-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentAnomChartType = btn.getAttribute("data-chart-type");
+        renderAnomalyChart();
+      });
+    });
+
+    document.querySelectorAll("#radarChartTypeToolbar .chart-type-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#radarChartTypeToolbar .chart-type-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentRadarChartType = btn.getAttribute("data-chart-type");
+        renderBreakthroughChart();
+      });
+    });
+
+    btnResetAnomZoom.addEventListener("click", () => {
+      if (anomalyChartInstance) anomalyChartInstance.resetZoom();
+    });
+
+    const btnResetRadarZoom = document.getElementById("btnResetRadarZoom");
+    if (btnResetRadarZoom) {
+      btnResetRadarZoom.addEventListener("click", () => {
+        if (breakthroughChartInstance) breakthroughChartInstance.resetZoom();
+      });
+    }
+
+    function renderAnomalyChart() {
+      if (!allAnalyticsData.length) return;
+
+      const sportFilter = document.querySelector('input[name="anomSportFilter"]:checked').value;
+      const dim = anomalyDimSelect.value;
+      const colors = getChartThemeColors();
+
+      const filtered = sportFilter === 'all'
+        ? allAnalyticsData
+        : allAnalyticsData.filter(a => a.type.toLowerCase() === sportFilter.toLowerCase());
+
+      const ctx = document.getElementById('anomalyChartCanvas').getContext('2d');
+      if (anomalyChartInstance) anomalyChartInstance.destroy();
+
+      // 1. Doughnut Breakdown Mode
+      if (currentAnomChartType === "doughnut") {
+        const catCounts = {
+          "Speed Breakthrough": 0,
+          "Climbing Breakthrough": 0,
+          "Ultra-Endurance": 0,
+          "Recovery / Fatigue": 0,
+          "Standard Training": 0
+        };
+        filtered.forEach(item => {
+          if (catCounts[item.category] !== undefined) catCounts[item.category]++;
+          else catCounts["Standard Training"]++;
+        });
+
+        anomalyChartInstance = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(catCounts),
+            datasets: [{
+              data: Object.values(catCounts),
+              backgroundColor: ['#10b981', '#f59e0b', '#0284c7', '#a1a1aa', '#3f3f46'],
+              borderColor: colors.tooltipBg,
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: { color: colors.ticks, font: { size: 12 } }
+              },
+              tooltip: {
+                backgroundColor: colors.tooltipBg,
+                titleColor: colors.tooltipTitle,
+                bodyColor: colors.tooltipBody,
+                borderColor: colors.tooltipBorder,
+                borderWidth: 1,
+                padding: 10
+              }
+            }
+          }
+        });
+        return;
+      }
+
+      // 2. Monthly Aggregation Bar Chart Mode
+      if (currentAnomChartType === "bars") {
+        const monthly = {};
+        filtered.forEach(item => {
+          const monthKey = (item.date || "").substring(0, 7); // YYYY-MM
+          if (!monthKey || monthKey === "Unknown") return;
+          if (!monthly[monthKey]) monthly[monthKey] = { distance: 0, elevation: 0, count: 0 };
+          monthly[monthKey].distance += item.distance_km;
+          monthly[monthKey].elevation += item.elevation_m;
+          monthly[monthKey].count += 1;
+        });
+
+        const sortedMonths = Object.keys(monthly).sort();
+        const distData = sortedMonths.map(m => Math.round(monthly[m].distance));
+        const elevData = sortedMonths.map(m => Math.round(monthly[m].elevation));
+
+        anomalyChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: sortedMonths,
+            datasets: [
+              {
+                label: 'Total Distance (km)',
+                data: distData,
+                backgroundColor: 'rgba(252, 76, 2, 0.75)',
+                borderColor: '#fc4c02',
+                borderWidth: 1,
+                yAxisID: 'y'
+              },
+              {
+                label: 'Elevation Gain (m)',
+                data: elevData,
+                backgroundColor: 'rgba(245, 158, 11, 0.65)',
+                borderColor: '#f59e0b',
+                borderWidth: 1,
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: colors.ticks } },
+              tooltip: {
+                backgroundColor: colors.tooltipBg,
+                titleColor: colors.tooltipTitle,
+                bodyColor: colors.tooltipBody,
+                borderColor: colors.tooltipBorder,
+                borderWidth: 1,
+                padding: 10
+              },
+              zoom: {
+                pan: { enabled: true, mode: 'x' },
+                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+              }
+            },
+            scales: {
+              x: { grid: { color: colors.grid }, ticks: { color: colors.ticks } },
+              y: {
+                type: 'linear',
+                position: 'left',
+                title: { display: true, text: 'Distance (km)', color: colors.ticks },
+                grid: { color: colors.grid },
+                ticks: { color: colors.ticks }
+              },
+              y1: {
+                type: 'linear',
+                position: 'right',
+                title: { display: true, text: 'Elevation (m)', color: '#f59e0b' },
+                grid: { drawOnChartArea: false },
+                ticks: { color: '#f59e0b' }
+              }
+            }
+          }
+        });
+        return;
+      }
+
+      // 3. Chronological Trendline Mode
+      if (currentAnomChartType === "trend") {
+        const sorted = [...filtered].filter(x => x.date && x.date !== 'Unknown').sort((a, b) => a.date.localeCompare(b.date));
+        const labels = sorted.map(x => x.date);
+        const speedPoints = sorted.map(x => x.speed_kmh);
+        const distPoints = sorted.map(x => x.distance_km);
+
+        anomalyChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Average Speed (km/h)',
+                data: speedPoints,
+                borderColor: '#fc4c02',
+                backgroundColor: 'rgba(252, 76, 2, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 3,
+                pointHoverRadius: 6,
+                yAxisID: 'y'
+              },
+              {
+                label: 'Distance (km)',
+                data: distPoints,
+                borderColor: '#0284c7',
+                backgroundColor: 'transparent',
+                tension: 0.3,
+                pointRadius: 2,
+                pointHoverRadius: 5,
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: colors.ticks } },
+              tooltip: {
+                backgroundColor: colors.tooltipBg,
+                titleColor: colors.tooltipTitle,
+                bodyColor: colors.tooltipBody,
+                borderColor: colors.tooltipBorder,
+                borderWidth: 1,
+                padding: 10
+              },
+              zoom: {
+                pan: { enabled: true, mode: 'x' },
+                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+              }
+            },
+            scales: {
+              x: { grid: { color: colors.grid }, ticks: { color: colors.ticks, maxTicksLimit: 12 } },
+              y: {
+                title: { display: true, text: 'Speed (km/h)', color: '#fc4c02' },
+                grid: { color: colors.grid },
+                ticks: { color: colors.ticks }
+              },
+              y1: {
+                position: 'right',
+                title: { display: true, text: 'Distance (km)', color: '#0284c7' },
+                grid: { drawOnChartArea: false },
+                ticks: { color: '#0284c7' }
+              }
+            }
+          }
+        });
+        return;
+      }
+
+      // 4. Default: Scatter / Outlier Plot Mode with Zoom & Pan
+      let xLabel = "Distance (km)";
+      let yLabel = "Average Speed (km/h)";
+
+      const chartData = filtered.map((item, idx) => {
+        let xVal = item.distance_km;
+        let yVal = item.speed_kmh;
+
+        if (dim === "dist_vs_dur") {
+          xVal = item.duration_min;
+          yVal = item.distance_km;
+          xLabel = "Duration (minutes)";
+          yLabel = "Distance (km)";
+        } else if (dim === "elev_vs_dist") {
+          xVal = item.distance_km;
+          yVal = item.elevation_m;
+          xLabel = "Distance (km)";
+          yLabel = "Elevation Gain (m)";
+        } else if (dim === "timeline") {
+          xVal = idx;
+          yVal = item.speed_kmh;
+          xLabel = "Activity Sequence (Recent → Oldest)";
+          yLabel = "Speed (km/h)";
+        }
+
+        const isOutlier = item.category !== "Standard Training";
+        const pointRadius = isOutlier ? 7 : 4;
+
+        return {
+          x: xVal,
+          y: yVal,
+          r: pointRadius,
+          rawItem: item
+        };
+      });
+
+      anomalyChartInstance = new Chart(ctx, {
+        type: 'bubble',
+        data: {
+          datasets: [{
+            label: 'Workouts',
+            data: chartData,
+            backgroundColor: (ctx) => {
+              const item = ctx.raw ? ctx.raw.rawItem : null;
+              if (!item) return '#64748b';
+              if (item.category === 'Speed Breakthrough') return '#10b981';
+              if (item.category === 'Climbing Breakthrough') return '#f59e0b';
+              if (item.category === 'Ultra-Endurance') return '#0284c7';
+              if (item.category === 'Recovery / Fatigue') return '#a1a1aa';
+              return 'rgba(113, 113, 122, 0.4)';
+            },
+            borderColor: (ctx) => {
+              const item = ctx.raw ? ctx.raw.rawItem : null;
+              if (!item) return 'transparent';
+              if (item.category === 'Speed Breakthrough') return '#34d399';
+              if (item.category === 'Climbing Breakthrough') return '#fbbf24';
+              if (item.category === 'Ultra-Endurance') return '#38bdf8';
+              return 'transparent';
+            },
+            borderWidth: 1.5,
+            hoverRadius: (ctx) => (ctx.raw ? ctx.raw.r + 3 : 8)
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: colors.tooltipBg,
+              titleColor: colors.tooltipTitle,
+              bodyColor: colors.tooltipBody,
+              borderColor: colors.tooltipBorder,
+              borderWidth: 1,
+              padding: 10,
+              displayColors: false,
+              callbacks: {
+                title: (items) => {
+                  if (!items.length) return '';
+                  const act = items[0].raw.rawItem;
+                  return `${act.badge || act.type} • ${act.date}`;
+                },
+                label: (ctx) => {
+                  const act = ctx.raw.rawItem;
+                  return [
+                    `Type: ${act.type}`,
+                    `Distance: ${act.distance_km} km`,
+                    `Duration: ${act.duration_str}`,
+                    `Speed: ${act.speed_kmh} km/h`,
+                    `Elevation: ${act.elevation_m} m`,
+                    `Classification: ${act.category}`
+                  ];
+                }
+              }
+            },
+            zoom: {
+              pan: {
+                enabled: true,
+                mode: 'xy',
+                modifierKey: null
+              },
+              zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                mode: 'xy'
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: xLabel, color: colors.ticks, font: { size: 12, weight: 600 } },
+              grid: { color: colors.grid },
+              ticks: { color: colors.ticks }
+            },
+            y: {
+              title: { display: true, text: yLabel, color: colors.ticks, font: { size: 12, weight: 600 } },
+              grid: { color: colors.grid },
+              ticks: { color: colors.ticks }
+            }
+          },
+          onClick: (e, elements) => {
+            if (elements && elements.length > 0) {
+              const index = elements[0].index;
+              const pt = chartData[index];
+              if (pt && pt.rawItem) selectAnomalyWorkout(pt.rawItem);
+            }
+          }
+        }
+      });
+    }
+
+    function selectAnomalyWorkout(item) {
+      selectedAnomalyItem = item;
+      anomalyInspectorCard.classList.add("active");
+
+      anomInspectBadge.textContent = item.badge || item.category;
+      anomInspectBadge.style.background = item.color || '#fc4c02';
+
+      anomInspectTitle.textContent = `${item.type} on ${item.date}`;
+      anomInspectStats.innerHTML = `
+        <strong>Distance:</strong> ${item.distance_km} km &nbsp;•&nbsp;
+        <strong>Duration:</strong> ${item.duration_str} &nbsp;•&nbsp;
+        <strong>Speed:</strong> ${item.speed_kmh} km/h &nbsp;•&nbsp;
+        <strong>Elevation:</strong> ${item.elevation_m} m &nbsp;•&nbsp;
+        <strong>Status:</strong> ${item.category}
+      `;
+
+      anomalyInspectorCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    btnAskAiAboutAnomaly.addEventListener("click", () => {
+      if (!selectedAnomalyItem) return;
+      const prompt = `Analyze this ${selectedAnomalyItem.category} workout: ${selectedAnomalyItem.type} on ${selectedAnomalyItem.date} (${selectedAnomalyItem.distance_km}km, ${selectedAnomalyItem.elevation_m}m elevation gain in ${selectedAnomalyItem.duration_str}, avg speed: ${selectedAnomalyItem.speed_kmh}km/h). Explain what made this workout a statistical outlier and provide training insights.`;
+
+      tabBtnSearch.click();
+      questionInput.value = prompt;
+      sendQuery(prompt);
+    });
+
+    anomalyDimSelect.addEventListener("change", () => renderAnomalyChart());
+
+    document.querySelectorAll('input[name="anomSportFilter"]').forEach(radio => {
+      radio.addEventListener('change', () => renderAnomalyChart());
+    });
+
+    // ---------------------------------------------------------------------------
+    // Climbing Radar View (Chart.js + Zoom + Modes)
+    // ---------------------------------------------------------------------------
+    const inspectorCard = document.getElementById("inspectorCard");
+    const inspectBadge = document.getElementById("inspectBadge");
+    const inspectTitle = document.getElementById("inspectTitle");
+    const inspectStats = document.getElementById("inspectStats");
+    const btnAskAiAboutWorkout = document.getElementById("btnAskAiAboutWorkout");
+
+    function renderBreakthroughChart() {
+      if (!allAnalyticsData.length) return;
+
+      const activeFilter = document.querySelector('input[name="chartFilter"]:checked').value;
+      const colors = getChartThemeColors();
+
+      const filtered = activeFilter === 'all' 
+        ? allAnalyticsData 
+        : allAnalyticsData.filter(a => a.type.toLowerCase() === activeFilter.toLowerCase());
+
+      const ctx = document.getElementById('breakthroughChart').getContext('2d');
+      if (breakthroughChartInstance) breakthroughChartInstance.destroy();
+
+      // Trendline for Elevation
+      if (currentRadarChartType === "trend") {
+        const sorted = [...filtered].filter(x => x.date && x.date !== 'Unknown').sort((a, b) => a.date.localeCompare(b.date));
+        const labels = sorted.map(x => x.date);
+        const elevPoints = sorted.map(x => x.elevation_m);
+        const vamPoints = sorted.map(x => x.vam);
+
+        breakthroughChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Elevation Gain (m)',
+                data: elevPoints,
+                borderColor: '#f59e0b',
+                backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 3,
+                yAxisID: 'y'
+              },
+              {
+                label: 'VAM (Vertical m/h)',
+                data: vamPoints,
+                borderColor: '#fc4c02',
+                tension: 0.3,
+                pointRadius: 2,
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: colors.ticks } },
+              tooltip: {
+                backgroundColor: colors.tooltipBg,
+                titleColor: colors.tooltipTitle,
+                bodyColor: colors.tooltipBody,
+                borderColor: colors.tooltipBorder,
+                borderWidth: 1,
+                padding: 10
+              },
+              zoom: {
+                pan: { enabled: true, mode: 'x' },
+                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+              }
+            },
+            scales: {
+              x: { grid: { color: colors.grid }, ticks: { color: colors.ticks, maxTicksLimit: 12 } },
+              y: { title: { display: true, text: 'Elevation (m)', color: '#f59e0b' }, grid: { color: colors.grid }, ticks: { color: colors.ticks } },
+              y1: { position: 'right', title: { display: true, text: 'VAM (m/h)', color: '#fc4c02' }, grid: { drawOnChartArea: false }, ticks: { color: '#fc4c02' } }
+            }
+          }
+        });
+        return;
+      }
+
+      // Monthly Elevation Bars
+      if (currentRadarChartType === "bars") {
+        const monthly = {};
+        filtered.forEach(item => {
+          const monthKey = (item.date || "").substring(0, 7);
+          if (!monthKey || monthKey === "Unknown") return;
+          if (!monthly[monthKey]) monthly[monthKey] = 0;
+          monthly[monthKey] += item.elevation_m;
+        });
+
+        const sortedMonths = Object.keys(monthly).sort();
+        const elevData = sortedMonths.map(m => Math.round(monthly[m]));
+
+        breakthroughChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: sortedMonths,
+            datasets: [{
+              label: 'Total Monthly Elevation Climbed (m)',
+              data: elevData,
+              backgroundColor: 'rgba(245, 158, 11, 0.75)',
+              borderColor: '#f59e0b',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: colors.ticks } },
+              zoom: {
+                pan: { enabled: true, mode: 'x' },
+                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+              }
+            },
+            scales: {
+              x: { grid: { color: colors.grid }, ticks: { color: colors.ticks } },
+              y: { title: { display: true, text: 'Elevation (m)', color: '#f59e0b' }, grid: { color: colors.grid }, ticks: { color: colors.ticks } }
+            }
+          }
+        });
+        return;
+      }
+
+      // Default: Bubble Radar Mode with Zoom & Pan
+      const chartData = filtered.map(item => {
+        const radius = Math.min(15, Math.max(5, (item.elevation_m / 120) + 4));
+        return {
+          x: item.distance_km,
+          y: item.speed_kmh,
+          r: radius,
+          rawItem: item
+        };
+      });
+
+      breakthroughChartInstance = new Chart(ctx, {
+        type: 'bubble',
+        data: {
+          datasets: [{
+            label: 'Activities',
+            data: chartData,
+            backgroundColor: (ctx) => {
+              const item = ctx.raw ? ctx.raw.rawItem : null;
+              if (!item) return '#64748b';
+              return item.color || '#64748b';
+            },
+            borderColor: (ctx) => {
+              const item = ctx.raw ? ctx.raw.rawItem : null;
+              if (!item) return '#94a3b8';
+              if (item.category === 'Climbing Breakthrough') return '#fbbf24';
+              if (item.category === 'Speed Breakthrough') return '#34d399';
+              if (item.category === 'Ultra-Endurance') return '#60a5fa';
+              return 'rgba(255, 255, 255, 0.15)';
+            },
+            borderWidth: 1.5,
+            hoverRadius: (ctx) => (ctx.raw ? ctx.raw.r + 3 : 8)
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: colors.tooltipBg,
+              titleColor: colors.tooltipTitle,
+              bodyColor: colors.tooltipBody,
+              borderColor: colors.tooltipBorder,
+              borderWidth: 1,
+              padding: 10,
+              displayColors: false,
+              callbacks: {
+                title: (items) => {
+                  if (!items.length) return '';
+                  const act = items[0].raw.rawItem;
+                  return `${act.badge || act.type} • ${act.date}`;
+                },
+                label: (ctx) => {
+                  const act = ctx.raw.rawItem;
+                  return [
+                    `Type: ${act.type}`,
+                    `Distance: ${act.distance_km} km`,
+                    `Duration: ${act.duration_str}`,
+                    `Speed: ${act.speed_kmh} km/h`,
+                    `Elevation Gain: ${act.elevation_m} m (VAM: ${act.vam} m/h)`
+                  ];
+                }
+              }
+            },
+            zoom: {
+              pan: { enabled: true, mode: 'xy' },
+              zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Distance (km)', color: colors.ticks, font: { size: 12, weight: 600 } },
+              grid: { color: colors.grid },
+              ticks: { color: colors.ticks }
+            },
+            y: {
+              title: { display: true, text: 'Average Speed (km/h)', color: colors.ticks, font: { size: 12, weight: 600 } },
+              grid: { color: colors.grid },
+              ticks: { color: colors.ticks }
+            }
+          },
+          onClick: (e, elements) => {
+            if (elements && elements.length > 0) {
+              const index = elements[0].index;
+              const point = chartData[index];
+              if (point && point.rawItem) selectBreakthroughWorkout(point.rawItem);
+            }
+          }
+        }
+      });
+    }
+
+    function selectBreakthroughWorkout(item) {
+      selectedBreakthroughItem = item;
+      inspectorCard.classList.add("active");
+
+      inspectBadge.textContent = item.badge || item.category;
+      inspectBadge.style.background = item.color || '#fc4c02';
+
+      inspectTitle.textContent = `${item.type} on ${item.date}`;
+      inspectStats.innerHTML = `
+        <strong>Distance:</strong> ${item.distance_km} km &nbsp;•&nbsp; 
+        <strong>Duration:</strong> ${item.duration_str} &nbsp;•&nbsp; 
+        <strong>Speed:</strong> ${item.speed_kmh} km/h &nbsp;•&nbsp; 
+        <strong>Elevation Gain:</strong> ${item.elevation_m > 0 ? item.elevation_m + ' m' : 'Flat'} 
+        ${item.vam > 0 ? `(VAM: ${item.vam} m/h)` : ''}
+      `;
+
+      inspectorCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    btnAskAiAboutWorkout.addEventListener("click", () => {
+      if (!selectedBreakthroughItem) return;
+      const prompt = `Analyze my ${selectedBreakthroughItem.type} on ${selectedBreakthroughItem.date}: Distance was ${selectedBreakthroughItem.distance_km}km with ${selectedBreakthroughItem.elevation_m}m elevation gain in ${selectedBreakthroughItem.duration_str} (Speed: ${selectedBreakthroughItem.speed_kmh}km/h). How does this workout compare to my usual performance and what makes it notable?`;
+
+      tabBtnSearch.click();
+      questionInput.value = prompt;
+      sendQuery(prompt);
+    });
+
+    document.querySelectorAll('input[name="chartFilter"]').forEach(radio => {
+      radio.addEventListener('change', () => renderBreakthroughChart());
+    });
   </script>
 </body>
 </html>

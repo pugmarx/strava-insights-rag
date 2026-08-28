@@ -11,11 +11,11 @@ mock_modules = {
     'psycopg2.pool': MagicMock(),
     'dotenv': MagicMock(),
     'requests': MagicMock(),
-    'huggingface_hub': MagicMock(),
-    'flask': MagicMock(),
-    'flask_cors': MagicMock()
+    'huggingface_hub': MagicMock()
 }
-sys.modules.update(mock_modules)
+for mod_name, mod_mock in mock_modules.items():
+    if mod_name not in sys.modules:
+        sys.modules[mod_name] = mod_mock
 
 # Add backend directory to sys.path
 backend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backend')

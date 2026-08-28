@@ -14,6 +14,7 @@ CLIENT_ID = os.getenv("STRAVA_CLIENT_ID")
 CLIENT_SECRET = os.getenv("STRAVA_CLIENT_SECRET")
 ATHLETE_ID = os.getenv("STRAVA_USER_ID")
 
+DATABASE_URL = os.getenv("DATABASE_URL")
 POSTGRES_DB = os.getenv("POSTGRES_DB")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
@@ -23,8 +24,12 @@ POSTGRES_SSLMODE = os.getenv("POSTGRES_SSLMODE", "require")
 
 
 def get_db_connection():
-    """Establish a direct PostgreSQL database connection."""
+    """Establish a direct PostgreSQL database connection using DATABASE_URL or individual parameters."""
     try:
+        db_url = os.getenv("DATABASE_URL")
+        if db_url:
+            return psycopg2.connect(db_url.strip().strip("\"'"))
+        
         return psycopg2.connect(
             dbname=POSTGRES_DB,
             user=POSTGRES_USER,

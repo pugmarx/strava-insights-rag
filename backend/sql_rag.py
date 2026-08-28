@@ -29,6 +29,8 @@ def compute_embedding(text):
     emb = list(model.embed([text]))[0]
     return emb.tolist() if hasattr(emb, "tolist") else list(emb)
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 def connect_db():
     """Establish a connection to PostgreSQL database using connection pool or direct fallback."""
     pool = get_pool()
@@ -38,6 +40,10 @@ def connect_db():
         except Exception:
             pass
     try:
+        db_url = os.getenv("DATABASE_URL")
+        if db_url:
+            return psycopg2.connect(db_url.strip().strip("\"'"))
+
         conn = psycopg2.connect(
             dbname=POSTGRES_DB,
             user=POSTGRES_USER,

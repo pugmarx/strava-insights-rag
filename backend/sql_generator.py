@@ -30,6 +30,10 @@ def connect_db():
         except Exception:
             pass
     try:
+        db_url = os.getenv("DATABASE_URL")
+        if db_url:
+            return psycopg2.connect(db_url.strip().strip("\"'"))
+
         conn = psycopg2.connect(
             dbname=POSTGRES_DB,
             user=POSTGRES_USER,

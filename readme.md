@@ -56,7 +56,7 @@ sequenceDiagram
     participant DB as Postgres (pgvector)
     participant LLM as LLM (Ollama / Groq / HF)
 
-    User->>API: POST /query {"question": "What was my longest run?"}
+    User->>API: POST /query {"question": "What was the longest run in 2024?"}
     API->>Embed: Embed question text
     Embed-->>API: 384-d vector
     API->>DB: Cosine search (<=>) + SQL filters
@@ -149,7 +149,7 @@ Ask a question:
 ```sh
 curl -X POST http://localhost:5000/query \
   -H "Content-Type: application/json" \
-  -d '{"question": "What was my longest run?"}'
+  -d '{"question": "What was the longest run in 2024?"}'
 ```
 
 Trigger an on-demand sync:

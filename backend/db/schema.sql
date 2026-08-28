@@ -28,3 +28,20 @@ CREATE TABLE IF NOT EXISTS strava_tokens (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT single_row CHECK (id = 1)
 );
+
+-- Create table for semantic vector query caching across container restarts
+CREATE TABLE IF NOT EXISTS query_cache (
+    id SERIAL PRIMARY KEY,
+    query_text TEXT NOT NULL,
+    query_type VARCHAR(20) DEFAULT 'rag',
+    target_year INT,
+    is_historical BOOLEAN DEFAULT FALSE,
+    embedding vector(384) NOT NULL,
+    response TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS query_cache_embedding_idx 
+ON query_cache USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 20);
+

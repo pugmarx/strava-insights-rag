@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from token_manager import get_valid_access_token, get_db_connection, ATHLETE_ID
 from sql_rag import compute_embedding
+from cache_manager import invalidate_cache_for_year
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(project_root, ".env"))
@@ -83,6 +84,10 @@ def save_activity_to_db(activity_data):
                 embedding
             ))
             conn.commit()
+            if timestamp and hasattr(timestamp, "year"):
+                invalidate_cache_for_year(timestamp.year)
+            else:
+                invalidate_cache_for_year(datetime.now().year)
             return True
     finally:
         conn.close()
@@ -106,6 +111,7 @@ def delete_activity(activity_id):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM activities WHERE activity_id = %s", (activity_id,))
             conn.commit()
+            invalidate_cache_for_year(datetime.now().year)
             print(f"[StravaService] Deleted activity {activity_id} from database.")
             return True
     finally:

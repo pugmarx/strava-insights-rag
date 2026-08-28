@@ -22,8 +22,13 @@ if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
 import sql_rag
+import cache_manager
 
 class TestSqlRag(unittest.TestCase):
+
+    def setUp(self):
+        cache_manager.invalidate_all_caches()
+        sql_rag.model.embed.return_value = iter([[0.1] * 384])
 
     def test_build_context_with_running_activity(self):
         """Test build_context formatting and pace calculation for runs."""

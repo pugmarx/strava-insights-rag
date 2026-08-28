@@ -15,13 +15,18 @@ load_dotenv(os.path.join(project_root, ".env"))
 load_dotenv()
 
 from token_manager import get_db_connection
+from cache_manager import get_cached_analytics, set_cached_analytics
 
 
 def get_breakthrough_analytics(activity_filter=None):
     """
     Computes statistical clusters, climbing metrics, and breakthrough classifications
-    for all activities stored in the database.
+    for all activities stored in the database with in-memory TTL caching.
     """
+    cached_data = get_cached_analytics(activity_filter)
+    if cached_data is not None:
+        return cached_data
+
     conn = get_db_connection()
     if not conn:
         return {"error": "Database connection failed", "activities": []}
@@ -162,10 +167,12 @@ def get_breakthrough_analytics(activity_filter=None):
         # Sort chronologically by date descending
         processed_activities.sort(key=lambda x: x["date"], reverse=True)
 
-        return {
+        result = {
             "summary": counts,
             "activities": processed_activities
         }
+        set_cached_analytics(activity_filter, result)
+        return result
 
     except Exception as e:
         print(f"[Analytics] Error generating breakthrough analytics: {e}")

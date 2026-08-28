@@ -6,6 +6,7 @@ from datetime import datetime
 from fastembed import TextEmbedding
 from db_pool import get_pool
 from llm_client import LLMClient
+from cache_manager import get_cached_embedding, set_cached_embedding, get_semantic_cache, set_semantic_cache
 
 # Load environment variables
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,9 +28,14 @@ llm_client = LLMClient()
 model = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 def compute_embedding(text):
-    """Generate vector embedding as a Python list using fastembed."""
+    """Generate vector embedding as a Python list using fastembed with in-memory caching."""
+    cached = get_cached_embedding(text)
+    if cached is not None:
+        return cached
     emb = list(model.embed([text]))[0]
-    return emb.tolist() if hasattr(emb, "tolist") else list(emb)
+    result = emb.tolist() if hasattr(emb, "tolist") else list(emb)
+    set_cached_embedding(text, result)
+    return result
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -435,12 +441,20 @@ Response:"""
 
 def handle_rag_query(user_query, debug=False):
     """
-    Simple RAG pipeline: Retrieve → Augment → Generate
+    Simple RAG pipeline: Retrieve → Augment → Generate (with Semantic Caching)
     Let the LLM interpret what "best" means from the retrieved context.
     """
     if debug:
         print(f"\n> DEBUG: Processing query: {user_query}")
     
+    # Check Semantic Vector Cache first
+    query_vec = compute_embedding(user_query)
+    cached_response = get_semantic_cache(user_query, query_vec, query_type="rag")
+    if cached_response:
+        if debug:
+            print("> DEBUG: Returning cached response from Semantic Cache.")
+        return cached_response
+
     # Step 1: Simple vector similarity retrieval
     if debug:
         print("> DEBUG: Retrieving similar activities...")
@@ -458,9 +472,6 @@ def handle_rag_query(user_query, debug=False):
             if isinstance(timestamp, str):
                 timestamp = datetime.fromisoformat(timestamp)
             print(f"   {i}. {activity['activity_type']}: {distance_km:.1f}km on {timestamp.strftime('%Y-%m-%d')} (similarity: {activity['similarity_score']:.3f})")
-        
-        # Show database stats
-        # debug_all_activities()
     
     # Step 2: Build context from retrieved activities
     if debug:
@@ -472,6 +483,10 @@ def handle_rag_query(user_query, debug=False):
         print("> DEBUG: Generating response...")
     response = generate_rag_response(user_query, context)
     
+    # Store into Semantic Cache for future hits
+    if response:
+        set_semantic_cache(user_query, query_vec, response, query_type="rag")
+
     return response
 
 # Alternative: Hybrid approach (RAG + some SQL when needed)
@@ -479,6 +494,12 @@ def hybrid_query_handler(user_query):
     """
     Hybrid approach: Use RAG for most queries, but fall back to SQL for specific aggregations.
     """
+    # Check Semantic Vector Cache first
+    query_vec = compute_embedding(user_query)
+    cached_response = get_semantic_cache(user_query, query_vec, query_type="hybrid")
+    if cached_response:
+        return cached_response
+
     # Keywords that suggest aggregation queries that might need SQL
     sql_keywords = ['total', 'average', 'count', 'sum', 'most', 'least', 'fastest', 'slowest']
     
@@ -499,7 +520,10 @@ User Question: {user_query}
 
 Provide a helpful response with calculations if needed:"""
         
-        return generate_rag_response(user_query, enhanced_prompt)
+        response = generate_rag_response(user_query, enhanced_prompt)
+        if response:
+            set_semantic_cache(user_query, query_vec, response, query_type="hybrid")
+        return response
     else:
         # Use standard RAG for descriptive queries
         return handle_rag_query(user_query)

@@ -17,6 +17,7 @@ from flask_cors import CORS
 from sql_rag import handle_rag_query, hybrid_query_handler
 from strava_service import sync_single_activity, delete_activity, sync_incremental, get_latest_activity_timestamp
 from token_manager import get_db_connection
+from cache_manager import init_cache_table, invalidate_all_caches
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -25,19 +26,21 @@ CORS(app)
 STRAVA_VERIFY_TOKEN = os.getenv("STRAVA_VERIFY_TOKEN", "STRAVA_INSIGHTS_WEBHOOK_VERIFY_TOKEN")
 
 def _init_db_schema():
-    """Ensure elevation_gain column exists on startup."""
+    """Ensure elevation_gain column and query_cache table exist on startup."""
     conn = get_db_connection()
-    if not conn:
-        return
-    try:
-        with conn.cursor() as cur:
-            cur.execute("ALTER TABLE activities ADD COLUMN IF NOT EXISTS elevation_gain FLOAT DEFAULT 0;")
-            conn.commit()
-            print("[DB] Schema verified: elevation_gain column active.")
-    except Exception as e:
-        print(f"[DB] Schema migration check note: {e}")
-    finally:
-        conn.close()
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("ALTER TABLE activities ADD COLUMN IF NOT EXISTS elevation_gain FLOAT DEFAULT 0;")
+                conn.commit()
+                print("[DB] Schema verified: elevation_gain column active.")
+        except Exception as e:
+            print(f"[DB] Schema migration check note: {e}")
+        finally:
+            conn.close()
+    
+    # Initialize query_cache table
+    init_cache_table()
 
 # Run non-blocking schema check
 threading.Thread(target=_init_db_schema, daemon=True).start()
@@ -230,6 +233,16 @@ def analytics_breakthroughs():
     activity_type = request.args.get("type")
     data = get_breakthrough_analytics(activity_filter=activity_type)
     return jsonify(data), 200
+
+
+@app.route("/api/cache/clear", methods=["POST"])
+def clear_cache():
+    """Manually invalidate both in-memory and database query caches."""
+    try:
+        invalidate_all_caches()
+        return jsonify({"status": "success", "message": "All caches cleared"}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 
 if __name__ == "__main__":

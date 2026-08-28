@@ -23,8 +23,12 @@ if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
 import sql_rag
+import cache_manager
 
 class TestFastEmbedIntegration(unittest.TestCase):
+
+    def setUp(self):
+        cache_manager.invalidate_all_caches()
 
     def test_compute_embedding_with_list(self):
         """Test compute_embedding when embed() returns a list."""

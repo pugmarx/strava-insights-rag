@@ -95,5 +95,35 @@ class TestSqlRag(unittest.TestCase):
         response = sql_rag.handle_rag_query("Nonexistent query", debug=False)
         self.assertEqual(response, "I couldn't find any relevant activities to answer your question.")
 
+    def test_extract_chart_data_from_activities(self):
+        """Test extraction of chronological chart datapoints."""
+        activities = [
+            {
+                'activity_id': '102',
+                'activity_type': 'Run',
+                'distance': 10000.0,
+                'elevation_gain': 120.0,
+                'duration': 3000,
+                'timestamp': datetime(2026, 8, 15, 8, 0, 0)
+            },
+            {
+                'activity_id': '101',
+                'activity_type': 'Run',
+                'distance': 5000.0,
+                'elevation_gain': 45.0,
+                'duration': 1500,
+                'timestamp': datetime(2026, 8, 1, 8, 0, 0)
+            }
+        ]
+        chart_data = sql_rag.extract_chart_data_from_activities(activities)
+        self.assertIsNotNone(chart_data)
+        self.assertEqual(len(chart_data['labels']), 2)
+        # Should be sorted chronologically
+        self.assertEqual(chart_data['labels'][0], "2026-08-01")
+        self.assertEqual(chart_data['labels'][1], "2026-08-15")
+        self.assertEqual(chart_data['distances'], [5.0, 10.0])
+        self.assertEqual(chart_data['elevations'], [45.0, 120.0])
+        self.assertEqual(chart_data['points'][0]['pace'], "5:00/km")
+
 if __name__ == '__main__':
     unittest.main()

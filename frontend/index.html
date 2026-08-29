@@ -308,6 +308,7 @@
       color: var(--text-muted);
       padding-bottom: 0.75rem;
       border-bottom: 1px solid var(--border-subtle);
+      gap: 0.75rem;
     }
 
     .mode-tag {
@@ -322,10 +323,60 @@
       color: var(--text-muted);
     }
 
+    /* Response Trend Visualizer Section */
+    .response-trend-section {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.875rem 1rem;
+      margin: 0.5rem 0 1rem;
+    }
+
+    .response-trend-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .response-trend-title {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
     .response-body {
       font-size: 0.9375rem;
       color: var(--text-main);
       line-height: 1.7;
+    }
+
+    .response-body h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 1.25rem 0 0.5rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .response-body h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin: 1rem 0 0.4rem;
+    }
+
+    .response-body h4 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin: 0.875rem 0 0.35rem;
     }
 
     .response-body p {
@@ -338,12 +389,26 @@
     }
 
     .response-body li {
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.45rem;
+      line-height: 1.6;
     }
 
     .response-body strong {
-      color: #ffffff;
+      color: var(--text-main);
       font-weight: 600;
+    }
+
+    .metric-chip {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--accent);
+      background: rgba(252, 76, 2, 0.08);
+      border: 1px solid rgba(252, 76, 2, 0.25);
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+      margin: 0 0.15rem;
     }
 
     /* SQL Results Table */
@@ -795,9 +860,32 @@
 
         <div id="responseContainer" class="card response-card">
           <div class="response-meta">
-            <div><strong>Query:</strong> <span id="displayQuestion"></span></div>
-            <div class="mode-tag" id="displayMode">RAG</div>
+            <div style="flex: 1; min-width: 0;"><strong>Query:</strong> <span id="displayQuestion"></span></div>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0;">
+              <span class="mode-tag" id="displayMode">RAG</span>
+              <button class="btn btn-secondary" id="btnCopyResponse" title="Copy answer to clipboard" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; border-radius: 4px;">
+                <span id="btnCopyText">📋 Copy</span>
+              </button>
+            </div>
           </div>
+
+          <!-- Dynamic Trend Chart (Rendered when 2+ activities are retrieved) -->
+          <div id="responseTrendSection" class="response-trend-section" style="display: none;">
+            <div class="response-trend-header">
+              <div class="response-trend-title">
+                <span>📈</span> Activity Progression
+              </div>
+              <div class="chart-type-toolbar" id="trendMetricToolbar">
+                <button class="chart-type-btn active" data-metric="distances" title="Distance in Kilometers">Distance (km)</button>
+                <button class="chart-type-btn" data-metric="elevations" title="Elevation Gain in Meters">Elevation (m)</button>
+                <button class="chart-type-btn" data-metric="speeds" title="Speed in km/h">Speed (km/h)</button>
+              </div>
+            </div>
+            <div style="position: relative; height: 200px; width: 100%; margin-top: 0.4rem;">
+              <canvas id="responseTrendCanvas"></canvas>
+            </div>
+          </div>
+
           <div class="response-body" id="displayAnswer"></div>
         </div>
       </main>
@@ -1028,7 +1116,12 @@
     const dbTotalCount = document.getElementById("dbTotalCount");
     const dbLatestDate = document.getElementById("dbLatestDate");
 
-    // Markdown-to-HTML parser (clean headers, paragraphs, lists, bold, code)
+    let responseTrendChartInstance = null;
+    let currentResponseChartData = null;
+    let currentResponseTrendMetric = 'distances';
+    let lastResponseRawText = '';
+
+    // Markdown-to-HTML parser (clean headers, paragraphs, lists, bold metrics, code)
     function renderMarkdown(text) {
       if (!text) return "";
       
@@ -1048,9 +1141,9 @@
       html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
 
       // Headings
-      html = html.replace(/^###[ \t]+(.*$)/gim, '<h4 style="margin: 1.1rem 0 0.4rem; color: #ffffff; font-size: 0.95rem; font-weight: 600;">$1</h4>');
-      html = html.replace(/^##[ \t]+(.*$)/gim, '<h3 style="margin: 1.25rem 0 0.5rem; color: #ffffff; font-size: 1.05rem; font-weight: 600;">$1</h3>');
-      html = html.replace(/^#[ \t]+(.*$)/gim, '<h2 style="margin: 1.4rem 0 0.6rem; color: #ffffff; font-size: 1.15rem; font-weight: 700;">$1</h2>');
+      html = html.replace(/^###[ \t]+(.*$)/gim, '<h4>$1</h4>');
+      html = html.replace(/^##[ \t]+(.*$)/gim, '<h3>$1</h3>');
+      html = html.replace(/^#[ \t]+(.*$)/gim, '<h2>$1</h2>');
 
       // Lists & Paragraphs
       const lines = html.split('\n');
@@ -1062,10 +1155,10 @@
         if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || /^\d+\.\s/.test(trimmed)) {
           if (!inList) {
             inList = true;
-            result.push('<ul style="margin-left: 1.25rem; margin-bottom: 0.75rem;">');
+            result.push('<ul>');
           }
           const itemText = trimmed.replace(/^[-*]\s+|\d+\.\s+/, '');
-          result.push(`<li style="margin-bottom: 0.35rem;">${itemText}</li>`);
+          result.push(`<li>${itemText}</li>`);
         } else {
           if (inList) {
             inList = false;
@@ -1075,7 +1168,7 @@
             if (trimmed.startsWith('<h2') || trimmed.startsWith('<h3') || trimmed.startsWith('<h4') || trimmed.startsWith('<pre')) {
               result.push(trimmed);
             } else {
-              result.push(`<p style="margin-bottom: 0.5rem;">${trimmed}</p>`);
+              result.push(`<p>${trimmed}</p>`);
             }
           }
         }
@@ -1085,6 +1178,155 @@
       }
 
       return result.join('\n');
+    }
+
+    function renderResponseTrendChart(chartData, metric = 'distances') {
+      const section = document.getElementById("responseTrendSection");
+      const canvas = document.getElementById("responseTrendCanvas");
+      if (!section || !canvas) return;
+
+      if (!chartData || !chartData.points || chartData.points.length < 2) {
+        section.style.display = "none";
+        if (responseTrendChartInstance) {
+          responseTrendChartInstance.destroy();
+          responseTrendChartInstance = null;
+        }
+        return;
+      }
+
+      section.style.display = "block";
+      const colors = getChartThemeColors();
+
+      let metricLabel = "Distance (km)";
+      let metricValues = chartData.distances || [];
+      let metricUnit = "km";
+      let strokeColor = "#fc4c02"; // Strava orange
+      let fillBg = "rgba(252, 76, 2, 0.12)";
+
+      if (metric === "elevations") {
+        metricLabel = "Elevation Gain (m)";
+        metricValues = chartData.elevations || [];
+        metricUnit = "m";
+        strokeColor = "#10b981"; // Emerald
+        fillBg = "rgba(16, 185, 129, 0.12)";
+      } else if (metric === "speeds") {
+        metricLabel = "Speed (km/h)";
+        metricValues = chartData.speeds || [];
+        metricUnit = "km/h";
+        strokeColor = "#3b82f6"; // Blue
+        fillBg = "rgba(59, 130, 246, 0.12)";
+      }
+
+      if (responseTrendChartInstance) {
+        responseTrendChartInstance.destroy();
+      }
+
+      const ctx = canvas.getContext("2d");
+      responseTrendChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: chartData.labels,
+          datasets: [{
+            label: metricLabel,
+            data: metricValues,
+            borderColor: strokeColor,
+            backgroundColor: fillBg,
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.35,
+            pointBackgroundColor: strokeColor,
+            pointBorderColor: "#ffffff",
+            pointBorderWidth: 1.5,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "rgba(15, 23, 42, 0.95)",
+              titleColor: "#f8fafc",
+              bodyColor: "#cbd5e1",
+              borderColor: "rgba(255, 255, 255, 0.15)",
+              borderWidth: 1,
+              padding: 10,
+              displayColors: false,
+              callbacks: {
+                title: function(items) {
+                  const idx = items[0].dataIndex;
+                  const pt = chartData.points[idx];
+                  return `${pt.type} • ${pt.date}`;
+                },
+                label: function(item) {
+                  const idx = item.dataIndex;
+                  const pt = chartData.points[idx];
+                  const lines = [
+                    `Distance: ${pt.distance_km} km`,
+                    `Elevation: ${pt.elevation_m} m`,
+                    `Speed: ${pt.speed_kmh} km/h`
+                  ];
+                  if (pt.pace && pt.pace !== 'N/A') {
+                    lines.push(`Pace: ${pt.pace}`);
+                  }
+                  return lines;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: colors.grid, drawBorder: false },
+              ticks: {
+                color: colors.tick,
+                font: { size: 10 },
+                maxRotation: 45
+              }
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: colors.grid, drawBorder: false },
+              ticks: {
+                color: colors.tick,
+                font: { size: 10 },
+                callback: val => `${val} ${metricUnit}`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Trend metric toolbar switcher
+    document.querySelectorAll("#trendMetricToolbar .chart-type-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#trendMetricToolbar .chart-type-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentResponseTrendMetric = btn.getAttribute("data-metric");
+        if (currentResponseChartData) {
+          renderResponseTrendChart(currentResponseChartData, currentResponseTrendMetric);
+        }
+      });
+    });
+
+    // Copy Response Button
+    const btnCopyResponse = document.getElementById("btnCopyResponse");
+    const btnCopyText = document.getElementById("btnCopyText");
+    if (btnCopyResponse) {
+      btnCopyResponse.addEventListener("click", () => {
+        const textToCopy = lastResponseRawText || (displayAnswer ? displayAnswer.innerText : "");
+        if (!textToCopy) return;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          if (btnCopyText) btnCopyText.textContent = "✅ Copied!";
+          setTimeout(() => {
+            if (btnCopyText) btnCopyText.textContent = "📋 Copy";
+          }, 2000);
+        }).catch(err => {
+          console.error("Clipboard copy error:", err);
+        });
+      });
     }
 
     function showStatus(message, type = "error") {
@@ -1129,6 +1371,16 @@
 
         displayQuestion.textContent = data.question || q;
         displayMode.textContent = data.approach || (approach === 'hybrid' ? 'Hybrid RAG + SQL' : 'Semantic RAG');
+        lastResponseRawText = data.response || "";
+
+        // Render trend chart if chronological activity points exist
+        if (data.chart_data && data.chart_data.points && data.chart_data.points.length >= 2) {
+          currentResponseChartData = data.chart_data;
+          renderResponseTrendChart(data.chart_data, currentResponseTrendMetric);
+        } else {
+          currentResponseChartData = null;
+          renderResponseTrendChart(null);
+        }
 
         if (data.response) {
           displayAnswer.innerHTML = renderMarkdown(data.response);

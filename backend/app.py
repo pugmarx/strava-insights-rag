@@ -82,10 +82,11 @@ def query():
         return jsonify({"error": "Question is too long (maximum 500 characters)"}), 400
     
     try:
-        response = handle_rag_query(user_question, debug=True)
+        response, chart_data = handle_rag_query(user_question, debug=True, return_chart_data=True)
         return jsonify({
             "question": user_question,
             "response": response,
+            "chart_data": chart_data,
             "approach": "RAG"
         })
     except (ConnectionError, TimeoutError) as e:
@@ -110,10 +111,11 @@ def hybrid_query():
         return jsonify({"error": "Question is too long (maximum 500 characters)"}), 400
     
     try:
-        response = hybrid_query_handler(user_question)
+        response, chart_data = hybrid_query_handler(user_question, return_chart_data=True)
         return jsonify({
             "question": user_question,
             "response": response,
+            "chart_data": chart_data,
             "approach": "Hybrid RAG+SQL"
         })
     except (ConnectionError, TimeoutError) as e:

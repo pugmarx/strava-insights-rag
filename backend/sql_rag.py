@@ -402,6 +402,74 @@ def build_context(retrieved_activities):
     
     return "\n".join(context_lines)
 
+def extract_chart_data_from_activities(activities):
+    """
+    Extract sorted chronological datapoints from retrieved activities for trend charting.
+    Returns chart data dict if there are 2 or more activities with valid dates/distances.
+    """
+    if not activities or len(activities) < 2:
+        return None
+    
+    valid_acts = []
+    for act in activities:
+        ts = act.get('timestamp')
+        if not ts:
+            continue
+        if isinstance(ts, str):
+            try:
+                ts = datetime.fromisoformat(ts)
+            except Exception:
+                continue
+        valid_acts.append((ts, act))
+    
+    if len(valid_acts) < 2:
+        return None
+        
+    valid_acts.sort(key=lambda x: x[0])
+    
+    labels = []
+    distances = []
+    elevations = []
+    speeds = []
+    points = []
+    
+    for ts, act in valid_acts:
+        date_str = ts.strftime('%Y-%m-%d')
+        dist_km = round((act.get('distance') or 0) / 1000.0, 2)
+        elev_m = round(float(act.get('elevation_gain') or 0), 1)
+        dur_s = act.get('duration') or 0
+        speed_kmh = round((dist_km / (dur_s / 3600.0)), 1) if dur_s > 0 else 0
+        
+        pace_str = None
+        act_type = act.get('activity_type', 'Activity')
+        if act_type == 'Run' and dist_km > 0 and dur_s > 0:
+            pace_sec = dur_s / dist_km
+            pace_min = int(pace_sec // 60)
+            pace_rem = int(pace_sec % 60)
+            pace_str = f"{pace_min}:{pace_rem:02d}/km"
+            
+        labels.append(date_str)
+        distances.append(dist_km)
+        elevations.append(elev_m)
+        speeds.append(speed_kmh)
+        
+        points.append({
+            "date": date_str,
+            "type": act_type,
+            "distance_km": dist_km,
+            "elevation_m": elev_m,
+            "speed_kmh": speed_kmh,
+            "pace": pace_str
+        })
+        
+    return {
+        "labels": labels,
+        "distances": distances,
+        "elevations": elevations,
+        "speeds": speeds,
+        "points": points
+    }
+
 def generate_rag_response(user_query, context):
     """
     Generate final response using LLM with retrieved context and temporal grounding.
@@ -421,62 +489,67 @@ User Question: {user_query}
 
 Instructions & Guardrails:
 - GROUNDING GUARDRAIL: Base your answers strictly on the Retrieved Activity Context provided above. Do NOT make up or assume activities, dates, distances, or metrics that are not present. If the requested data is not found in the context, explicitly state that no matching activities were found.
-- Use the activity data provided above to answer the question
-- When answering relative time queries (like 'this month', 'this year', 'last month'), refer to Today's Date ({current_date_str})
-- ALWAYS state the specific activity type for each item (e.g. '- Ride on YYYY-MM-DD: ...', '- Hike on YYYY-MM-DD: ...', '- Run on YYYY-MM-DD: ...', '- Workout on YYYY-MM-DD: ...'). NEVER use the generic word 'Activity' when the specific type is known.
-- Group activities by their activity type (e.g. Rides, Runs, Hikes, Workouts) if multiple types exist
-- Enlist each qualifying activity as a clean unindented bullet point (- [Type] on YYYY-MM-DD: Distance, Elevation Gain if applicable, Duration, Speed/Pace)
-- When analyzing climbing or elevation questions, reference Elevation Gain and highlight notable climbs
-- For WeightTraining and Workout activities, focus on duration as the main performance metric
-- For running activities, pace (min/km) is often more meaningful than speed
-- For cycling activities, consider distance, elevation gain, and speed
-- Include dates, distances, elevation, and performance metrics in your analysis
-- If comparing activities across time periods, highlight the differences
-- Don't mention similarity scores or technical details about retrieval
-- Keep formatting clean, factual, and concise without using emojis
+- Structure your response cleanly with markdown headings where appropriate (e.g. ### Summary, ### Key Activities, ### Trend Analysis).
+- Bold key metrics (e.g. **14.2 km**, **4:45/km pace**, **320m elevation**, **1h 15m**).
+- When listing activities, format each as a clean bullet: `- **[Type] on YYYY-MM-DD**: Distance, Duration, Elevation, Pace/Speed`.
+- When answering relative time queries (like 'this month', 'this year', 'last month'), refer to Today's Date ({current_date_str}).
+- For WeightTraining and Workout activities, focus on duration as the main metric.
+- For running activities, pace (min/km) is key. For cycling, highlight distance, speed, and elevation gain.
+- If analyzing trends, summarize progression (e.g. volume changes, pace improvements).
+- Keep tone direct and factual without using emojis.
 
 Response:"""
     
     return llm_client.generate(prompt)
 
-def handle_rag_query(user_query, debug=False):
+def handle_rag_query(user_query, debug=False, return_chart_data=False):
     """
     Simple RAG pipeline: Retrieve → Augment → Generate (with Semantic Caching)
-    Let the LLM interpret what "best" means from the retrieved context.
     """
     if debug:
         print(f"\n> DEBUG: Processing query: {user_query}")
     
     # Check Semantic Vector Cache first
     query_vec = compute_embedding(user_query)
-    cached_response = get_semantic_cache(user_query, query_vec, query_type="rag")
-    if cached_response:
+    cached_payload = get_semantic_cache(user_query, query_vec, query_type="rag")
+    if cached_payload:
         if debug:
             print("> DEBUG: Returning cached response from Semantic Cache.")
-        return cached_response
+        if isinstance(cached_payload, dict):
+            cached_resp = cached_payload.get("response", "")
+            cached_chart = cached_payload.get("chart_data")
+        else:
+            cached_resp = cached_payload
+            cached_chart = None
+        if return_chart_data:
+            return cached_resp, cached_chart
+        return cached_resp
 
     # Step 1: Simple vector similarity retrieval
     if debug:
         print("> DEBUG: Retrieving similar activities...")
-    retrieved_activities = retrieve_similar_activities(user_query, top_k=15)  # Get more for LLM to choose from
+    retrieved_activities = retrieve_similar_activities(user_query, top_k=15)
     
     if not retrieved_activities:
-        return "I couldn't find any relevant activities to answer your question."
+        no_res = "I couldn't find any relevant activities to answer your question."
+        if return_chart_data:
+            return no_res, None
+        return no_res
     
     if debug:
         print(f"> DEBUG: Retrieved {len(retrieved_activities)} activities")
-        print("> DEBUG: Top retrieved activities:")
         for i, activity in enumerate(retrieved_activities[:5], 1):
-            distance_km = activity['distance'] / 1000 if activity['distance'] else 0
-            timestamp = activity['timestamp']
+            distance_km = (activity.get('distance') or 0) / 1000.0
+            timestamp = activity.get('timestamp')
             if isinstance(timestamp, str):
                 timestamp = datetime.fromisoformat(timestamp)
-            print(f"   {i}. {activity['activity_type']}: {distance_km:.1f}km on {timestamp.strftime('%Y-%m-%d')} (similarity: {activity['similarity_score']:.3f})")
+            print(f"   {i}. {activity['activity_type']}: {distance_km:.1f}km on {timestamp.strftime('%Y-%m-%d')} (similarity: {activity.get('similarity_score', 0):.3f})")
     
     # Step 2: Build context from retrieved activities
     if debug:
         print("> DEBUG: Building context...")
     context = build_context(retrieved_activities)
+    chart_data = extract_chart_data_from_activities(retrieved_activities)
     
     # Step 3: Generate response using LLM with context
     if debug:
@@ -485,20 +558,31 @@ def handle_rag_query(user_query, debug=False):
     
     # Store into Semantic Cache for future hits
     if response:
-        set_semantic_cache(user_query, query_vec, response, query_type="rag")
+        payload = {"response": response, "chart_data": chart_data}
+        set_semantic_cache(user_query, query_vec, payload, query_type="rag")
 
+    if return_chart_data:
+        return response, chart_data
     return response
 
 # Alternative: Hybrid approach (RAG + some SQL when needed)
-def hybrid_query_handler(user_query):
+def hybrid_query_handler(user_query, return_chart_data=False):
     """
     Hybrid approach: Use RAG for most queries, but fall back to SQL for specific aggregations.
     """
     # Check Semantic Vector Cache first
     query_vec = compute_embedding(user_query)
-    cached_response = get_semantic_cache(user_query, query_vec, query_type="hybrid")
-    if cached_response:
-        return cached_response
+    cached_payload = get_semantic_cache(user_query, query_vec, query_type="hybrid")
+    if cached_payload:
+        if isinstance(cached_payload, dict):
+            cached_resp = cached_payload.get("response", "")
+            cached_chart = cached_payload.get("chart_data")
+        else:
+            cached_resp = cached_payload
+            cached_chart = None
+        if return_chart_data:
+            return cached_resp, cached_chart
+        return cached_resp
 
     # Keywords that suggest aggregation queries that might need SQL
     sql_keywords = ['total', 'average', 'count', 'sum', 'most', 'least', 'fastest', 'slowest']
@@ -509,6 +593,7 @@ def hybrid_query_handler(user_query):
         # Get relevant activities via vector search
         retrieved_activities = retrieve_similar_activities(user_query, top_k=10)
         context = build_context(retrieved_activities)
+        chart_data = extract_chart_data_from_activities(retrieved_activities)
         
         # Generate response that might include summary statistics
         enhanced_prompt = f"""Based on the retrieved activities and the user's question, provide a comprehensive response. If the question asks for totals, averages, or statistics, calculate them from the provided data.
@@ -522,11 +607,14 @@ Provide a helpful response with calculations if needed:"""
         
         response = generate_rag_response(user_query, enhanced_prompt)
         if response:
-            set_semantic_cache(user_query, query_vec, response, query_type="hybrid")
+            payload = {"response": response, "chart_data": chart_data}
+            set_semantic_cache(user_query, query_vec, payload, query_type="hybrid")
+        if return_chart_data:
+            return response, chart_data
         return response
     else:
         # Use standard RAG for descriptive queries
-        return handle_rag_query(user_query)
+        return handle_rag_query(user_query, return_chart_data=return_chart_data)
 
 def debug_all_activities():
     """

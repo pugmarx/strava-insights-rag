@@ -1,3 +1,4 @@
+import json
 import re
 import time
 from datetime import datetime
@@ -165,11 +166,19 @@ def get_semantic_cache(query_text, query_vector, query_type="rag", similarity_th
             """, (query_vector, query_type, query_vector, similarity_threshold))
             row = cur.fetchone()
             if row and len(row) >= 3:
-                response, similarity, matched_query = row[0], row[1], row[2]
+                raw_response, similarity, matched_query = row[0], row[1], row[2]
                 print(f"[CacheManager] Semantic Cache HIT (similarity: {similarity:.3f}) for '{query_text}' -> matched '{matched_query}'")
+                
+                cached_val = raw_response
+                if isinstance(raw_response, str) and raw_response.startswith("{") and '"response"' in raw_response:
+                    try:
+                        cached_val = json.loads(raw_response)
+                    except Exception:
+                        cached_val = raw_response
+
                 # Populate Tier 1 in-memory cache for subsequent identical queries
-                _query_memory_cache[norm_key] = response
-                return response
+                _query_memory_cache[norm_key] = cached_val
+                return cached_val
     except Exception as e:
         print(f"[CacheManager] Error checking semantic cache: {e}")
     finally:
@@ -190,12 +199,14 @@ def set_semantic_cache(query_text, query_vector, response, query_type="rag"):
     if not conn:
         return
 
+    db_response = json.dumps(response) if isinstance(response, dict) else str(response)
+
     try:
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO query_cache (query_text, query_type, target_year, is_historical, embedding, response)
                 VALUES (%s, %s, %s, %s, %s, %s);
-            """, (query_text, query_type, target_year, historical, query_vector, response))
+            """, (query_text, query_type, target_year, historical, query_vector, db_response))
             conn.commit()
     except Exception as e:
         print(f"[CacheManager] Error storing to query_cache table: {e}")

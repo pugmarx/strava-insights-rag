@@ -15,43 +15,37 @@ flowchart LR
 
     subgraph Backend ["Flask Backend"]
         API[API Endpoints]
-        Cache[Tier 1: CacheManager<br/>In-Memory RAM]
-        Embed[FastEmbed]
-        RAG[RAG & SQL Pipeline]
+        Cache[Cache Manager<br/>RAM + DB]
+        RAG[RAG & Analytics Engine]
         Sync[Strava Sync Service]
         LLM[LLM Client<br/>Ollama / Groq / Hugging Face]
     end
 
     subgraph Storage ["PostgreSQL + pgvector"]
-        DB[(Activities & Vectors)]
-        DBCache[(Tier 2: query_cache)]
+        DB[(Activities & Embeddings)]
+        DBCache[(Query Cache)]
         Tokens[(OAuth Tokens)]
     end
 
     User <-->|Queries & Dashboard| API
-    API <-->|Exact Hits < 1ms| Cache
+    API <--> Cache
     API --> RAG
-    RAG <-->|Semantic Cache Match >= 0.92| DBCache
-    RAG --> Embed
-    RAG <-->|Vector + SQL Filter| DB
-    RAG --> LLM
-    LLM --> RAG
-    Strava -->|Webhooks / Activity Data| Sync
-    Sync <-->|OAuth / Refresh| Tokens
-    Sync -->|Fetch Activity Details| Strava
-    Sync --> Embed
-    Embed -->|Store Embeddings| DB
-    Sync -->|Year-Scoped Invalidation| Cache
-    Sync -->|Year-Scoped Invalidation| DBCache
+    RAG <--> DB
+    RAG <--> DBCache
+    RAG <--> LLM
+    Strava -->|Webhooks / Activities| Sync
+    Sync <--> Tokens
+    Sync --> DB
+    Sync -.->|Invalidate| Cache
 ```
 
 ---
 
 ## Key Interaction Flows
 
-### 1. Asking a Question (Two-Tier Cached RAG Pipeline)
+### 1. Asking a Question (Two-Tier Cached RAG)
 
-When a question is asked, the backend checks the in-memory cache, then checks PostgreSQL for semantically similar previous answers, and only calls the LLM if there is a cache miss.
+When a question is asked, the backend checks the in-memory cache, then checks PostgreSQL for semantically similar previous answers ($\ge 0.92$), and only calls the LLM if there is a cache miss.
 
 ```mermaid
 sequenceDiagram
@@ -60,38 +54,35 @@ sequenceDiagram
     participant API as Flask Backend
     participant Cache as Tier 1 In-Memory
     participant DBCache as Tier 2 Postgres (query_cache)
-    participant Embed as FastEmbed
     participant DB as Postgres (pgvector)
     participant LLM as LLM (Ollama / Groq / HF)
 
     User->>API: POST /query {"question": "What was the longest hike in October 2024?"}
     API->>Cache: Check exact in-memory match
-    alt Tier 1 In-Memory Hit (sub-ms)
+    alt Tier 1 Hit (< 1ms)
         Cache-->>API: Cached response
         API-->>User: JSON response
     else Tier 1 Miss
-        API->>Embed: Compute query vector
-        Embed-->>API: 384-d vector
         API->>DBCache: Cosine match (similarity >= 0.92)
         alt Tier 2 Semantic Hit (< 20ms)
             DBCache-->>API: Cached response
             API->>Cache: Populate Tier 1 RAM
             API-->>User: JSON response
         else Tier 2 Miss (Cold Path)
-            API->>DB: Cosine search (<=>) + SQL filters
-            DB-->>API: Matching activities context
+            API->>DB: Search matching activities
+            DB-->>API: Activity context
             API->>LLM: Prompt (Question + Context)
             LLM-->>API: Grounded answer
-            API->>Cache: Store in Tier 1 RAM
-            API->>DBCache: Store in Tier 2 Postgres
+            API->>Cache: Save to Tier 1 RAM
+            API->>DBCache: Save to Tier 2 Postgres
             API-->>User: JSON response
         end
     end
 ```
 
-### 2. Syncing Activities & Smart Cache Invalidation
+### 2. Syncing Activities (Webhooks / On-Demand)
 
-When a new workout finishes on Strava (or when you trigger a manual sync), the app pulls the activity metadata, creates an embedding, stores it in Postgres, and invalidates only the affected year's cache.
+When a new workout finishes on Strava (or when you trigger a manual sync), the app fetches details, generates embeddings, stores them in Postgres, and triggers cache invalidation.
 
 ```mermaid
 sequenceDiagram
@@ -99,21 +90,28 @@ sequenceDiagram
     actor Strava as Strava / User
     participant API as Flask Backend
     participant StravaAPI as Strava API
-    participant Embed as FastEmbed
     participant DB as Postgres (pgvector)
-    participant Cache as CacheManager (Tier 1 & Tier 2)
+    participant Cache as Cache Manager
 
     Strava->>API: Webhook event / POST /api/sync
-    API->>StravaAPI: Fetch full activity details (with OAuth token)
-    StravaAPI-->>API: Activity data (e.g. 2026 workout)
-    API->>Embed: Generate text summary & vector embedding
-    Embed-->>API: Embedding vector
-    API->>DB: Upsert activity record + vector
-    API->>Cache: Invalidate affected year (2026) & relative queries
-    Cache->>Cache: Clear in-memory query & analytics cache
-    Cache->>DB: DELETE FROM query_cache WHERE target_year = 2026 OR NULL
-    Note over Cache,DB: Historical queries (2021-2025) remain 100% cached!
+    API->>StravaAPI: Fetch activity details (OAuth)
+    StravaAPI-->>API: Activity data (distance, elevation, duration)
+    API->>DB: Upsert activity record & embedding
+    API->>Cache: Invalidate cache for affected year
+    Cache->>DB: Clear affected year & relative query entries
     DB-->>API: OK
+```
+
+### 3. Year-Based Cache Invalidation
+
+Past closed years are immutable and remain permanently cached. Only the affected activity's year and relative queries are cleared when new workouts arrive:
+
+```mermaid
+flowchart TD
+    NewAct["New Activity Synced (e.g. Year 2026)"]
+    
+    NewAct --> Clear["Invalidated:<br/>• Queries for 2026 (target_year = 2026)<br/>• Relative/all-time queries (target_year IS NULL)<br/>• Dashboard analytics totals"]
+    NewAct -.-> Keep["Preserved (100% Cached):<br/>• Historical closed years (2020 - 2025)"]
 ```
 
 ---

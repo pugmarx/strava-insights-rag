@@ -9,6 +9,7 @@ For more technical notes, check out **[docs/overview.md](docs/overview.md)**.
 ## Architecture
 
 ```mermaid
+%%{init: {'flowchart': {'curve': 'basis'}}}%%
 flowchart LR
     User([User / Browser])
     Strava[Strava API / Webhooks]
@@ -107,6 +108,7 @@ sequenceDiagram
 Past closed years are immutable and remain permanently cached. Only the affected activity's year and relative queries are cleared when new workouts arrive:
 
 ```mermaid
+%%{init: {'flowchart': {'curve': 'basis'}}}%%
 flowchart TD
     NewAct["New Activity Synced (e.g. Year 2026)"]
     

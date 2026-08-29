@@ -158,8 +158,8 @@ def execute_direct_sql(sql_query, limit, debug=False):
 def extract_time_filters(user_query):
     """
     Extract date/time filters from user query, supporting relative terms like
-    'last 3 months', 'past 6 months', 'this year', 'last year', 'this month',
-    'last month', explicit years, and month names.
+    'last 6 months', 'last 6months', 'past six months', 'this year', 'last year',
+    'this month', 'last month', explicit years, and month names.
     Returns a list of SQL where condition strings.
     """
     import re
@@ -167,12 +167,31 @@ def extract_time_filters(user_query):
     query_lower = user_query.lower()
     conditions = []
     
-    # 1. Arbitrary relative intervals: 'last/past N months/weeks/days/years'
-    interval_match = re.search(r'\b(?:last|past)\s+(\d+)\s+(month|week|day|year)s?\b', query_lower)
+    word_to_num = {
+        'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+        'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+        'eleven': 11, 'twelve': 12, 'half a': 6, 'half': 6
+    }
+    
+    # 1. Arbitrary relative intervals: 'last/past N months/weeks/days/years' (with or without spaces, word numbers)
+    interval_match = re.search(r'\b(?:last|past|previous)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(month|months|mo|mos|m|week|weeks|w|day|days|d|year|years|y)\b', query_lower)
     if interval_match:
-        num = interval_match.group(1)
-        unit = interval_match.group(2)
-        conditions.append(f"timestamp >= CURRENT_DATE - INTERVAL '{num} {unit}s'")
+        raw_num = interval_match.group(1)
+        raw_unit = interval_match.group(2)
+        num = word_to_num.get(raw_num, raw_num)
+        
+        if raw_unit.startswith(('m', 'mo')):
+            unit = 'months'
+        elif raw_unit.startswith('w'):
+            unit = 'weeks'
+        elif raw_unit.startswith('d'):
+            unit = 'days'
+        elif raw_unit.startswith('y'):
+            unit = 'years'
+        else:
+            unit = 'months'
+            
+        conditions.append(f"timestamp >= (SELECT COALESCE(MAX(timestamp), CURRENT_DATE) FROM activities) - INTERVAL '{num} {unit}'")
         return conditions
 
     # 2. Year filters
@@ -219,13 +238,13 @@ def extract_time_filters(user_query):
 
     # 4. Recent days/weeks / quarters
     if 'this week' in query_lower:
-        conditions.append("timestamp >= DATE_TRUNC('week', CURRENT_DATE)")
-    elif 'past 30 days' in query_lower or 'last 30 days' in query_lower:
-        conditions.append("timestamp >= CURRENT_DATE - INTERVAL '30 days'")
+        conditions.append("timestamp >= DATE_TRUNC('week', (SELECT COALESCE(MAX(timestamp), CURRENT_DATE) FROM activities))")
+    elif 'past 30 days' in query_lower or 'last 30 days' in query_lower or 'past month' in query_lower:
+        conditions.append("timestamp >= (SELECT COALESCE(MAX(timestamp), CURRENT_DATE) FROM activities) - INTERVAL '30 days'")
     elif 'past 7 days' in query_lower or 'last 7 days' in query_lower:
-        conditions.append("timestamp >= CURRENT_DATE - INTERVAL '7 days'")
+        conditions.append("timestamp >= (SELECT COALESCE(MAX(timestamp), CURRENT_DATE) FROM activities) - INTERVAL '7 days'")
     elif 'last quarter' in query_lower or 'past quarter' in query_lower:
-        conditions.append("timestamp >= CURRENT_DATE - INTERVAL '3 months'")
+        conditions.append("timestamp >= (SELECT COALESCE(MAX(timestamp), CURRENT_DATE) FROM activities) - INTERVAL '3 months'")
 
     return conditions
 

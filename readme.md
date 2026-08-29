@@ -113,7 +113,7 @@ flowchart TD
     NewAct["New Activity Synced (e.g. Year 2026)"]
     
     NewAct --> Clear["Invalidated:<br/>• Queries for 2026 (target_year = 2026)<br/>• Relative/all-time queries (target_year IS NULL)<br/>• Dashboard analytics totals"]
-    NewAct -.-> Keep["Preserved (100% Cached):<br/>• Historical closed years (2020 - 2025)"]
+    NewAct -.-> Keep["Preserved (100% Cached):<br/>• All past closed years (e.g. 2016 - 2025)"]
 ```
 
 ---

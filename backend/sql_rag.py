@@ -158,7 +158,8 @@ def execute_direct_sql(sql_query, limit, debug=False):
 def extract_time_filters(user_query):
     """
     Extract date/time filters from user query, supporting relative terms like
-    'this year', 'last year', 'this month', 'last month', explicit years, and month names.
+    'last 3 months', 'past 6 months', 'this year', 'last year', 'this month',
+    'last month', explicit years, and month names.
     Returns a list of SQL where condition strings.
     """
     import re
@@ -166,7 +167,15 @@ def extract_time_filters(user_query):
     query_lower = user_query.lower()
     conditions = []
     
-    # 1. Year filters
+    # 1. Arbitrary relative intervals: 'last/past N months/weeks/days/years'
+    interval_match = re.search(r'\b(?:last|past)\s+(\d+)\s+(month|week|day|year)s?\b', query_lower)
+    if interval_match:
+        num = interval_match.group(1)
+        unit = interval_match.group(2)
+        conditions.append(f"timestamp >= CURRENT_DATE - INTERVAL '{num} {unit}s'")
+        return conditions
+
+    # 2. Year filters
     if 'this year' in query_lower:
         conditions.append(f"EXTRACT(YEAR FROM timestamp) = {now.year}")
     elif 'last year' in query_lower:
@@ -176,7 +185,7 @@ def extract_time_filters(user_query):
         if year_match:
             conditions.append(f"EXTRACT(YEAR FROM timestamp) = {year_match.group(1)}")
             
-    # 2. Month filters
+    # 3. Month filters
     month_names = {
         'january': 1, 'jan': 1,
         'february': 2, 'feb': 2,
@@ -208,13 +217,15 @@ def extract_time_filters(user_query):
                 conditions.append(f"EXTRACT(MONTH FROM timestamp) = {m_num}")
                 break
 
-    # 3. Recent days/weeks
+    # 4. Recent days/weeks / quarters
     if 'this week' in query_lower:
         conditions.append("timestamp >= DATE_TRUNC('week', CURRENT_DATE)")
     elif 'past 30 days' in query_lower or 'last 30 days' in query_lower:
         conditions.append("timestamp >= CURRENT_DATE - INTERVAL '30 days'")
     elif 'past 7 days' in query_lower or 'last 7 days' in query_lower:
         conditions.append("timestamp >= CURRENT_DATE - INTERVAL '7 days'")
+    elif 'last quarter' in query_lower or 'past quarter' in query_lower:
+        conditions.append("timestamp >= CURRENT_DATE - INTERVAL '3 months'")
 
     return conditions
 
@@ -264,12 +275,12 @@ def retrieve_similar_activities(user_query, top_k=5):
             types_str = ", ".join(f"'{t}'" for t in set(matched_types))
             where_conditions.append(f"activity_type IN ({types_str})")
         
-        # 2. Apply time filters (e.g. this year, this month, July, 2026, etc.)
+        # 2. Apply time filters (e.g. last 3 months, this year, July, 2026, etc.)
         time_filters = extract_time_filters(user_query)
         where_conditions.extend(time_filters)
         
-        # 3. Detect if query is a listing / timeline query
-        is_listing_query = any(k in query_lower for k in ['list', 'show', 'all', 'activities in', 'history', 'log', 'what did i do', 'how many', 'summary', 'everything']) or bool(time_filters)
+        # 3. Detect if query is a listing / timeline / trend query
+        is_listing_query = any(k in query_lower for k in ['list', 'show', 'all', 'activities in', 'history', 'log', 'what did i do', 'how many', 'summary', 'everything', 'trend', 'trending', 'progression', 'over time']) or bool(time_filters)
         
         # 4. Handle sorting logic
         if any(word in query_lower for word in ['climb', 'climbs', 'climbing', 'elevation', 'mountain', 'hill', 'hilly', 'ascent']):

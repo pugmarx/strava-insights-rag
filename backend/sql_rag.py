@@ -599,7 +599,8 @@ def hybrid_query_handler(user_query, return_chart_data=False):
     sql_keywords = ['total', 'average', 'count', 'sum', 'most', 'least', 'fastest', 'slowest']
     
     if any(keyword in user_query.lower() for keyword in sql_keywords):
-        print("Detected aggregation query, using hybrid approach...")
+        if os.getenv("DEBUG", "false").lower() in ("true", "1"):
+            print("Detected aggregation query, using hybrid approach...")
         
         # Get relevant activities via vector search
         retrieved_activities = retrieve_similar_activities(user_query, top_k=10)

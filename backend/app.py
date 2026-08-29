@@ -71,6 +71,8 @@ def health():
     })
 
 
+DEBUG_MODE = os.getenv("DEBUG", "false").lower() in ("true", "1")
+
 @app.route("/query", methods=["POST"])
 def query():
     """API endpoint to handle user questions using RAG approach."""
@@ -82,7 +84,7 @@ def query():
         return jsonify({"error": "Question is too long (maximum 500 characters)"}), 400
     
     try:
-        response, chart_data = handle_rag_query(user_question, debug=True, return_chart_data=True)
+        response, chart_data = handle_rag_query(user_question, debug=DEBUG_MODE, return_chart_data=True)
         return jsonify({
             "question": user_question,
             "response": response,

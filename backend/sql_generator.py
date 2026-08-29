@@ -158,8 +158,9 @@ def generate_sql_query(user_question):
     # Clean response (removes markdown formatting, if any)
     sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
     
-    # Debugging: Print SQL query for review
-    print("\n* Generated SQL Query: *\n", sql_query)
+    # Debugging: Print SQL query when DEBUG=true
+    if os.getenv("DEBUG", "false").lower() in ("true", "1"):
+        print("\n* Generated SQL Query: *\n", sql_query)
     
     return sql_query
 

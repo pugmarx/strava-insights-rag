@@ -9,6 +9,7 @@ For more technical notes, check out **[docs/overview.md](docs/overview.md)**.
 ## Architecture
 
 ```mermaid
+
 flowchart LR
     User([User / Browser])
     Strava[Strava API / Webhooks]
@@ -43,6 +44,7 @@ flowchart LR
     Embed -->|Store Embeddings| DB
     Sync -->|Year-Scoped Invalidation| Cache
     Sync -->|Year-Scoped Invalidation| DBCache
+
 ```
 
 ---

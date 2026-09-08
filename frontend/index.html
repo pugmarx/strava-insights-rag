@@ -753,8 +753,22 @@
     }
 
     .syncing-spin {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       animation: spin 0.8s linear infinite;
+    }
+
+    /* Minimalist Monochromatic SVG Icon Alignment */
+    .btn svg,
+    .nav-tab-btn svg,
+    .chart-type-btn svg,
+    .btn-reset-zoom svg,
+    .metric-label svg,
+    .response-trend-title svg {
+      display: inline-flex;
+      align-self: center;
+      flex-shrink: 0;
     }
 
     @media (max-width: 600px) {
@@ -798,11 +812,11 @@
         </div>
       </div>
       <div class="header-actions">
-        <button class="btn btn-secondary" id="syncButton" title="Sync Strava Activities" style="padding: 0.5rem 0.625rem; font-size: 1rem; line-height: 1;">
-          <span id="syncBtnText">🔄</span>
+        <button class="btn btn-secondary" id="syncButton" title="Sync Strava Activities" style="padding: 0.5rem 0.625rem; line-height: 1;">
+          <span id="syncBtnText"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg></span>
         </button>
-        <button class="btn btn-secondary" id="themeToggleBtn" title="Toggle Light/Dark Theme" style="padding: 0.5rem 0.625rem; font-size: 1rem; line-height: 1;">
-          <span id="themeIcon">☀️</span>
+        <button class="btn btn-secondary" id="themeToggleBtn" title="Toggle Light/Dark Theme" style="padding: 0.5rem 0.625rem; line-height: 1;">
+          <span id="themeIcon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></span>
         </button>
       </div>
     </header>
@@ -810,13 +824,16 @@
     <!-- Top Navigation Tabs -->
     <div class="nav-tabs">
       <button class="nav-tab-btn active" id="tabBtnSearch">
-        <span>🔍</span> Query
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span>Query</span>
       </button>
       <button class="nav-tab-btn" id="tabBtnAnomalies">
-        <span>🚨</span> Anomalies
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Anomalies</span>
       </button>
       <button class="nav-tab-btn" id="tabBtnBreakthroughs">
-        <span>⛰️</span> Climbing
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>
+        <span>Climbing</span>
       </button>
     </div>
 
@@ -863,8 +880,8 @@
             <div style="flex: 1; min-width: 0;"><strong>Query:</strong> <span id="displayQuestion"></span></div>
             <div style="display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0;">
               <span class="mode-tag" id="displayMode">RAG</span>
-              <button class="btn btn-secondary" id="btnCopyResponse" title="Copy answer to clipboard" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; border-radius: 4px;">
-                <span id="btnCopyText">📋 Copy</span>
+              <button class="btn btn-secondary" id="btnCopyResponse" title="Copy answer to clipboard" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <span id="btnCopyText" style="display: inline-flex; align-items: center; gap: 0.35rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</span>
               </button>
             </div>
           </div>
@@ -872,8 +889,9 @@
           <!-- Dynamic Trend Chart (Rendered when 2+ activities are retrieved) -->
           <div id="responseTrendSection" class="response-trend-section" style="display: none;">
             <div class="response-trend-header">
-              <div class="response-trend-title">
-                <span>📈</span> Activity Progression
+              <div class="response-trend-title" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                <span>Activity Progression</span>
               </div>
               <div class="chart-type-toolbar" id="trendMetricToolbar">
                 <button class="chart-type-btn active" data-metric="distances" title="Distance in Kilometers">Distance (km)</button>
@@ -916,22 +934,22 @@
     <div id="viewAnomalies" style="display: none; flex-direction: column; gap: 1rem;">
       <div class="metrics-grid">
         <div class="metric-card speed">
-          <div class="metric-label">⚡ Speed & Pace Outliers</div>
+          <div class="metric-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Speed & Pace Outliers</div>
           <div class="metric-val" id="countAnomalySpeed">-</div>
           <div class="metric-sub">Top pace efficiency cluster</div>
         </div>
         <div class="metric-card climbing">
-          <div class="metric-label">⛰️ Climbing Ceilings</div>
+          <div class="metric-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>Climbing Ceilings</div>
           <div class="metric-val" id="countAnomalyClimbing">-</div>
           <div class="metric-sub">Extreme elevation outliers</div>
         </div>
         <div class="metric-card endurance">
-          <div class="metric-label">⏳ Endurance Outliers</div>
+          <div class="metric-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Endurance Outliers</div>
           <div class="metric-val" id="countAnomalyEndurance">-</div>
           <div class="metric-sub">Top statistical duration</div>
         </div>
         <div class="metric-card total">
-          <div class="metric-label">💤 Recovery & Slumps</div>
+          <div class="metric-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>Recovery & Slumps</div>
           <div class="metric-val" id="countAnomalyRecovery">-</div>
           <div class="metric-sub">Depressed pace days</div>
         </div>
@@ -944,21 +962,21 @@
           <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;">
             <div class="chart-type-toolbar" id="anomChartTypeToolbar">
               <button class="chart-type-btn active" data-chart-type="scatter" title="Scatter & Outlier View">
-                <span>🔵</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7.5" cy="7.5" r="2.5" fill="currentColor"/><circle cx="16.5" cy="6.5" r="2.5" fill="currentColor"/><circle cx="12" cy="14" r="2.5" fill="currentColor"/><circle cx="17.5" cy="17.5" r="2.5" fill="currentColor"/><circle cx="6.5" cy="17.5" r="2.5" fill="currentColor"/></svg>
               </button>
               <button class="chart-type-btn" data-chart-type="trend" title="Performance Trendline">
-                <span>📈</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
               </button>
               <button class="chart-type-btn" data-chart-type="bars" title="Monthly Aggregation Bars">
-                <span>📊</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
               </button>
               <button class="chart-type-btn" data-chart-type="doughnut" title="Breakthrough Donut Breakdown">
-                <span>🍩</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
               </button>
             </div>
 
             <button class="btn-reset-zoom" id="btnResetAnomZoom" title="Reset Zoom">
-              <span>🔄</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             </button>
 
             <select id="anomalyDimSelect" style="background: var(--bg-surface-elevated); color: var(--text-main); border: 1px solid var(--border-subtle); padding: 0.35rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.8125rem; font-family: inherit;">
@@ -1001,8 +1019,9 @@
             <h3 id="anomInspectTitle" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);"></h3>
             <div id="anomInspectStats" style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem;"></div>
           </div>
-          <button class="btn btn-primary" id="btnAskAiAboutAnomaly">
-            <span>✨ Ask AI to Explain this Outlier</span>
+          <button class="btn btn-primary" id="btnAskAiAboutAnomaly" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+            <span>Ask AI to Explain this Outlier</span>
           </button>
         </div>
       </div>
@@ -1012,22 +1031,22 @@
     <div id="viewBreakthroughs" style="display: none; flex-direction: column; gap: 1rem;">
       <div class="metrics-grid">
         <div class="metric-card climbing">
-          <div class="metric-label">Mountain Kings</div>
+          <div class="metric-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>Mountain Kings</div>
           <div class="metric-val" id="countClimbing">-</div>
           <div class="metric-sub">Top vertical ascent rates (VAM)</div>
         </div>
         <div class="metric-card speed">
-          <div class="metric-label">Speed Breakthroughs</div>
+          <div class="metric-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Speed Breakthroughs</div>
           <div class="metric-val" id="countSpeed">-</div>
           <div class="metric-sub">Pace-to-distance outliers</div>
         </div>
         <div class="metric-card endurance">
-          <div class="metric-label">Epic Endurance</div>
+          <div class="metric-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Epic Endurance</div>
           <div class="metric-val" id="countEndurance">-</div>
           <div class="metric-sub">Statistical duration ceilings</div>
         </div>
         <div class="metric-card total">
-          <div class="metric-label">Total Analyzed</div>
+          <div class="metric-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Total Analyzed</div>
           <div class="metric-val" id="countTotal">-</div>
           <div class="metric-sub">Indexed activities</div>
         </div>
@@ -1040,18 +1059,18 @@
           <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;">
             <div class="chart-type-toolbar" id="radarChartTypeToolbar">
               <button class="chart-type-btn active" data-chart-type="bubble" title="Climbing Bubble Radar">
-                <span>⛰️</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>
               </button>
               <button class="chart-type-btn" data-chart-type="trend" title="Elevation Trendline">
-                <span>📈</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
               </button>
               <button class="chart-type-btn" data-chart-type="bars" title="Monthly Elevation Climbed">
-                <span>📊</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
               </button>
             </div>
 
             <button class="btn-reset-zoom" id="btnResetRadarZoom" title="Reset Zoom">
-              <span>🔄</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             </button>
 
             <div class="segmented-control">
@@ -1087,15 +1106,16 @@
             <h3 id="inspectTitle" style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);"></h3>
             <div id="inspectStats" style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem;"></div>
           </div>
-          <button class="btn btn-primary" id="btnAskAiAboutWorkout">
-            <span>✨ Ask AI to Analyze this Workout</span>
+          <button class="btn btn-primary" id="btnAskAiAboutWorkout" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+            <span>Ask AI to Analyze this Workout</span>
           </button>
         </div>
       </div>
     </div>
 
     <footer class="app-footer">
-      <div>Created by <a href="https://github.com/pugmarx" target="_blank" rel="noopener noreferrer">pugmarx</a>, fueled by ☕ and 🚴.</div>
+      <div>Created by <a href="https://github.com/pugmarx" target="_blank" rel="noopener noreferrer">pugmarx</a>, fueled by coffee &amp; cycling.</div>
       <div style="font-size: 0.65rem; color: var(--text-dim); margin-top: 0.35rem; opacity: 0.65;" id="footerBuildVersion">v1.0.0</div>
     </footer>
   </div>
@@ -1318,9 +1338,9 @@
         const textToCopy = lastResponseRawText || (displayAnswer ? displayAnswer.innerText : "");
         if (!textToCopy) return;
         navigator.clipboard.writeText(textToCopy).then(() => {
-          if (btnCopyText) btnCopyText.textContent = "✅ Copied!";
+          if (btnCopyText) btnCopyText.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
           setTimeout(() => {
-            if (btnCopyText) btnCopyText.textContent = "📋 Copy";
+            if (btnCopyText) btnCopyText.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
           }, 2000);
         }).catch(err => {
           console.error("Clipboard copy error:", err);
@@ -1520,13 +1540,13 @@
       if (isLight) {
         document.documentElement.classList.add("theme-light");
         document.body.classList.add("theme-light");
-        themeIcon.textContent = "🌙";
+        themeIcon.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
         themeToggleBtn.title = "Switch to Dark mode";
         localStorage.setItem("strava_insights_theme", "light");
       } else {
         document.documentElement.classList.remove("theme-light");
         document.body.classList.remove("theme-light");
-        themeIcon.textContent = "☀️";
+        themeIcon.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
         themeToggleBtn.title = "Switch to Light mode";
         localStorage.setItem("strava_insights_theme", "dark");
       }

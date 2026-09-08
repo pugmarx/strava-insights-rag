@@ -130,35 +130,35 @@ def get_breakthrough_analytics(activity_filter=None):
                 # 1. Climbing Breakthrough: High elevation & high gradient
                 if item["elevation_m"] >= max(p90_elev, 250) and item["elevation_m"] >= (q75_elev + 1.0 * iqr_elev):
                     item["category"] = "Climbing Breakthrough"
-                    item["badge"] = "⛰️ Mountain King"
+                    item["badge"] = "Mountain King"
                     item["color"] = "#f59e0b"  # Glowing Amber
                     counts["climbing_breakthroughs"] += 1
 
                 # 2. Speed Breakthrough: High speed on significant distance
                 elif item["speed_kmh"] >= (q75_speed + 1.2 * iqr_speed) and item["distance_km"] >= (median_dist * 0.7):
                     item["category"] = "Speed Breakthrough"
-                    item["badge"] = "⚡ Speed Outlier"
+                    item["badge"] = "Speed Outlier"
                     item["color"] = "#10b981"  # Emerald Green
                     counts["speed_breakthroughs"] += 1
 
                 # 3. Ultra-Endurance: Statistical duration ceiling
                 elif item["duration_min"] >= (q75_dur + 1.5 * iqr_dur) or item["duration_min"] >= 240:
                     item["category"] = "Ultra-Endurance"
-                    item["badge"] = "⏱️ Epic Endurance"
+                    item["badge"] = "Epic Endurance"
                     item["color"] = "#3b82f6"  # Blue
                     counts["ultra_endurance"] += 1
 
                 # 4. Recovery / Fatigue Outlier
                 elif item["speed_kmh"] <= max(1.0, q25_speed - 1.2 * iqr_speed) and item["elevation_m"] < 150:
                     item["category"] = "Recovery / Fatigue"
-                    item["badge"] = "💤 Recovery Day"
+                    item["badge"] = "Recovery Day"
                     item["color"] = "#94a3b8"  # Slate Muted
                     counts["recovery"] += 1
 
                 # 5. Standard Baseline
                 else:
                     item["category"] = "Standard Training"
-                    item["badge"] = "🟢 Standard"
+                    item["badge"] = "Standard"
                     item["color"] = "#475569"  # Dark Slate
                     counts["standard"] += 1
 

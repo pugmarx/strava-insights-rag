@@ -601,66 +601,6 @@ def extract_chart_data_from_activities(activities):
     }
 
 
-def extract_map_data_from_activities(activities):
-    """
-    Extract routes with valid summary_polyline for frontend Leaflet map rendering.
-    Returns map_data dict containing structured route objects.
-    """
-    if not activities:
-        return None
-
-    routes = []
-    for act in activities:
-        polyline = act.get('summary_polyline')
-        if not polyline:
-            continue
-
-        ts = act.get('timestamp')
-        if isinstance(ts, str):
-            try:
-                ts = datetime.fromisoformat(ts)
-            except Exception:
-                pass
-        date_str = ts.strftime('%Y-%m-%d') if hasattr(ts, 'strftime') else 'Unknown date'
-
-        dist_m = act.get('distance') or 0.0
-        dist_km = round(dist_m / 1000.0, 2)
-        dur_sec = act.get('duration') or 0
-        hours = dur_sec // 3600
-        mins = (dur_sec % 3600) // 60
-        dur_str = f"{hours}h {mins}m" if hours > 0 else f"{mins}m"
-        elev_m = round(act.get('elevation_gain') or 0.0, 0)
-
-        # Speed / pace
-        speed_kmh = round((dist_km / (dur_sec / 3600.0)), 1) if dur_sec > 0 else 0.0
-        pace_str = ""
-        if act.get('activity_type') in ['Run', 'TrailRun', 'VirtualRun'] and dist_km > 0:
-            pace_sec_km = dur_sec / dist_km
-            p_m = int(pace_sec_km // 60)
-            p_s = int(pace_sec_km % 60)
-            pace_str = f"{p_m}:{p_s:02d}/km"
-
-        routes.append({
-            "activity_id": act.get('activity_id'),
-            "activity_type": act.get('activity_type'),
-            "date": date_str,
-            "distance_km": dist_km,
-            "duration_str": dur_str,
-            "speed_kmh": speed_kmh,
-            "pace": pace_str,
-            "elevation_m": elev_m,
-            "summary_polyline": polyline
-        })
-
-    if not routes:
-        return None
-
-    return {
-        "route_count": len(routes),
-        "routes": routes
-    }
-
-
 def generate_rag_response(user_query, context):
     """
     Generate final response using LLM with retrieved context and temporal grounding.
@@ -710,13 +650,11 @@ def handle_rag_query(user_query, debug=False, return_chart_data=False):
         if isinstance(cached_payload, dict):
             cached_resp = cached_payload.get("response", "")
             cached_chart = cached_payload.get("chart_data")
-            cached_map = cached_payload.get("map_data")
         else:
             cached_resp = cached_payload
             cached_chart = None
-            cached_map = None
         if return_chart_data:
-            return cached_resp, cached_chart, cached_map
+            return cached_resp, cached_chart
         return cached_resp
 
     # Step 1: Simple vector similarity retrieval
@@ -727,7 +665,7 @@ def handle_rag_query(user_query, debug=False, return_chart_data=False):
     if not retrieved_activities:
         no_res = "I couldn't find any relevant activities to answer your question."
         if return_chart_data:
-            return no_res, None, None
+            return no_res, None
         return no_res
     
     if debug:
@@ -744,7 +682,6 @@ def handle_rag_query(user_query, debug=False, return_chart_data=False):
         print("> DEBUG: Building context...")
     context = build_context(retrieved_activities)
     chart_data = extract_chart_data_from_activities(retrieved_activities)
-    map_data = extract_map_data_from_activities(retrieved_activities)
     
     # Step 3: Generate response using LLM with context
     if debug:
@@ -753,11 +690,11 @@ def handle_rag_query(user_query, debug=False, return_chart_data=False):
     
     # Store into Semantic Cache for future hits
     if response:
-        payload = {"response": response, "chart_data": chart_data, "map_data": map_data}
+        payload = {"response": response, "chart_data": chart_data}
         set_semantic_cache(user_query, query_vec, payload, query_type="rag")
 
     if return_chart_data:
-        return response, chart_data, map_data
+        return response, chart_data
     return response
 
 # Alternative: Hybrid approach (RAG + some SQL when needed)
@@ -772,13 +709,11 @@ def hybrid_query_handler(user_query, return_chart_data=False):
         if isinstance(cached_payload, dict):
             cached_resp = cached_payload.get("response", "")
             cached_chart = cached_payload.get("chart_data")
-            cached_map = cached_payload.get("map_data")
         else:
             cached_resp = cached_payload
             cached_chart = None
-            cached_map = None
         if return_chart_data:
-            return cached_resp, cached_chart, cached_map
+            return cached_resp, cached_chart
         return cached_resp
 
     # Keywords that suggest aggregation queries that might need SQL
@@ -792,7 +727,6 @@ def hybrid_query_handler(user_query, return_chart_data=False):
         retrieved_activities = retrieve_similar_activities(user_query, top_k=10)
         context = build_context(retrieved_activities)
         chart_data = extract_chart_data_from_activities(retrieved_activities)
-        map_data = extract_map_data_from_activities(retrieved_activities)
         
         # Generate response that might include summary statistics
         enhanced_prompt = f"""Based on the retrieved activities and the user's question, provide a comprehensive response. If the question asks for totals, averages, or statistics, calculate them from the provided data.
@@ -806,10 +740,10 @@ Provide a helpful response with calculations if needed:"""
         
         response = generate_rag_response(user_query, enhanced_prompt)
         if response:
-            payload = {"response": response, "chart_data": chart_data, "map_data": map_data}
+            payload = {"response": response, "chart_data": chart_data}
             set_semantic_cache(user_query, query_vec, payload, query_type="hybrid")
         if return_chart_data:
-            return response, chart_data, map_data
+            return response, chart_data
         return response
     else:
         # Use standard RAG for descriptive queries

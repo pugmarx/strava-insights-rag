@@ -112,14 +112,9 @@ def query():
     try:
         rag_result = handle_rag_query(user_question, debug=DEBUG_MODE, return_chart_data=True)
         if isinstance(rag_result, tuple):
-            if len(rag_result) >= 3:
-                response, chart_data, map_data = rag_result[0], rag_result[1], rag_result[2]
-            elif len(rag_result) == 2:
-                response, chart_data, map_data = rag_result[0], rag_result[1], None
-            else:
-                response, chart_data, map_data = rag_result[0], None, None
+            response, chart_data = rag_result[0], rag_result[1]
         else:
-            response, chart_data, map_data = rag_result, None, None
+            response, chart_data = rag_result, None
 
         latency_ms = int((time.time() - start_time) * 1000)
         
@@ -141,7 +136,6 @@ def query():
             "question": user_question,
             "response": response,
             "chart_data": chart_data,
-            "map_data": map_data,
             "approach": "RAG"
         })
     except (ConnectionError, TimeoutError) as e:
@@ -175,14 +169,9 @@ def hybrid_query():
     try:
         hybrid_result = hybrid_query_handler(user_question, return_chart_data=True)
         if isinstance(hybrid_result, tuple):
-            if len(hybrid_result) >= 3:
-                response, chart_data, map_data = hybrid_result[0], hybrid_result[1], hybrid_result[2]
-            elif len(hybrid_result) == 2:
-                response, chart_data, map_data = hybrid_result[0], hybrid_result[1], None
-            else:
-                response, chart_data, map_data = hybrid_result[0], None, None
+            response, chart_data = hybrid_result[0], hybrid_result[1]
         else:
-            response, chart_data, map_data = hybrid_result, None, None
+            response, chart_data = hybrid_result, None
 
         latency_ms = int((time.time() - start_time) * 1000)
         
@@ -204,7 +193,6 @@ def hybrid_query():
             "question": user_question,
             "response": response,
             "chart_data": chart_data,
-            "map_data": map_data,
             "approach": "Hybrid RAG+SQL"
         })
     except (ConnectionError, TimeoutError) as e:
@@ -222,98 +210,6 @@ def hybrid_query():
         log_query_event(user_question, approach="hybrid", status="ERROR", error_message=str(e), latency_ms=latency_ms)
         print(f"Unexpected error processing hybrid query: {e}")
         return jsonify({"error": "Failed to process query"}), 500
-
-
-@app.route("/api/routes", methods=["GET"])
-def api_get_routes():
-    """Retrieve GPS activity routes with summary polylines for the Routes Explorer & Heatmap."""
-    activity_type = request.args.get("type")
-    limit = min(int(request.args.get("limit", 60)), 200)
-    
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({"error": "Database connection failed", "routes": []}), 500
-
-    try:
-        with conn.cursor() as cur:
-            where_clauses = ["summary_polyline IS NOT NULL"]
-            params = []
-
-            if activity_type and activity_type.lower() != "all":
-                if activity_type.lower() in ["ride", "cycling", "bike"]:
-                    where_clauses.append("activity_type IN ('Ride', 'VirtualRide', 'EBikeRide', 'GravelRide', 'MountainBikeRide')")
-                elif activity_type.lower() in ["run", "running"]:
-                    where_clauses.append("activity_type IN ('Run', 'TrailRun', 'VirtualRun')")
-                elif activity_type.lower() in ["hike", "walk"]:
-                    where_clauses.append("activity_type IN ('Hike', 'Walk')")
-                else:
-                    where_clauses.append("activity_type = %s")
-                    params.append(activity_type)
-
-            where_sql = " AND ".join(where_clauses)
-            query_sql = f"""
-                SELECT activity_id, activity_type, distance, duration,
-                       COALESCE(elevation_gain, 0) as elevation_gain,
-                       COALESCE(elapsed_time, duration) as elapsed_time,
-                       summary_polyline, timestamp
-                FROM activities
-                WHERE {where_sql}
-                ORDER BY timestamp DESC
-                LIMIT %s;
-            """
-            params.append(limit)
-            cur.execute(query_sql, params)
-            rows = cur.fetchall()
-
-        routes = []
-        for row in rows:
-            act_id, act_type, dist, dur, elev, elap, poly, ts = row
-            dist_km = round((dist / 1000.0), 2) if dist else 0.0
-            dur_sec = dur if dur else 0
-            hours = dur_sec // 3600
-            mins = (dur_sec % 3600) // 60
-            dur_str = f"{hours}h {mins}m" if hours > 0 else f"{mins}m"
-            speed_kmh = round((dist_km / (dur_sec / 3600.0)), 1) if dur_sec > 0 else 0.0
-            pace_str = ""
-            if act_type in ['Run', 'TrailRun', 'VirtualRun'] and dist_km > 0:
-                pace_sec = dur_sec / dist_km
-                pace_str = f"{int(pace_sec // 60)}:{int(pace_sec % 60):02d}/km"
-
-            routes.append({
-                "id": act_id,
-                "type": act_type,
-                "date": ts.strftime('%Y-%m-%d') if ts else 'Unknown',
-                "timestamp": ts.isoformat() if ts else None,
-                "distance_km": dist_km,
-                "duration_str": dur_str,
-                "speed_kmh": speed_kmh,
-                "pace": pace_str,
-                "elevation_m": round(float(elev or 0.0), 0),
-                "summary_polyline": poly
-            })
-
-        return jsonify({
-            "status": "success",
-            "count": len(routes),
-            "routes": routes
-        }), 200
-    except Exception as e:
-        print(f"[Routes API] Error fetching routes: {e}")
-        return jsonify({"error": str(e), "routes": []}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/activities/<int:activity_id>/streams", methods=["GET"])
-def api_activity_streams(activity_id):
-    """Retrieve per-second velocity, altitude, and GPS streams for an activity."""
-    from strava_service import get_activity_streams
-    try:
-        streams = get_activity_streams(activity_id)
-        return jsonify(streams), 200
-    except Exception as e:
-        print(f"[Streams API] Error for activity {activity_id}: {e}")
-        return jsonify({"error": str(e), "activity_id": activity_id, "has_streams": False}), 500
 
 
 @app.route("/api/logs/failed", methods=["GET"])

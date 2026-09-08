@@ -32,6 +32,7 @@ class TestQueryLogger(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.original_logs_dir = query_logger.LOGS_DIR
         self.original_audit_file = query_logger.AUDIT_LOG_FILE
+        self.original_log_failed_only = query_logger.LOG_FAILED_ONLY
         query_logger.LOGS_DIR = self.temp_dir
         query_logger.AUDIT_LOG_FILE = os.path.join(self.temp_dir, "query_audit.jsonl")
 
@@ -39,10 +40,12 @@ class TestQueryLogger(unittest.TestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
         query_logger.LOGS_DIR = self.original_logs_dir
         query_logger.AUDIT_LOG_FILE = self.original_audit_file
+        query_logger.LOG_FAILED_ONLY = self.original_log_failed_only
 
     @patch('query_logger.get_db_connection')
-    def test_log_query_event_success(self, mock_get_conn):
-        """Test logging successful query event to local JSONL and mocked DB."""
+    def test_log_query_event_all_mode(self, mock_get_conn):
+        """Test logging successful query event when LOG_FAILED_ONLY is False."""
+        query_logger.LOG_FAILED_ONLY = False
         mock_conn = MagicMock()
         mock_get_conn.return_value = mock_conn
 
@@ -67,14 +70,72 @@ class TestQueryLogger(unittest.TestCase):
             self.assertEqual(data["retrieved_count"], 1)
 
     @patch('query_logger.get_db_connection')
+    def test_log_query_event_failed_only_mode(self, mock_get_conn):
+        """Test that LOG_FAILED_ONLY=True skips successful queries but logs failures and zero-result queries."""
+        query_logger.LOG_FAILED_ONLY = True
+        mock_conn = MagicMock()
+        mock_get_conn.return_value = mock_conn
+
+        # 1. Clean success with retrieved_count > 0 -> Should NOT be logged
+        query_logger.log_query_event(
+            query_text="Show my runs",
+            approach="rag",
+            status="SUCCESS",
+            retrieved_count=5,
+            response="Found 5 runs",
+            async_log=False
+        )
+        self.assertFalse(os.path.exists(query_logger.AUDIT_LOG_FILE))
+
+        # 2. Query with 0 retrieved items -> Should be logged
+        query_logger.log_query_event(
+            query_text="Show my swimming activities",
+            approach="rag",
+            status="SUCCESS",
+            retrieved_count=0,
+            response="No activities found",
+            async_log=False
+        )
+        self.assertTrue(os.path.exists(query_logger.AUDIT_LOG_FILE))
+
+        # 3. Query with ERROR status -> Should be logged
+        query_logger.log_query_event(
+            query_text="Error query",
+            approach="rag",
+            status="ERROR",
+            error_message="Database timeout",
+            async_log=False
+        )
+
+        # 4. Query with NO_RESULTS status -> Should be logged
+        query_logger.log_query_event(
+            query_text="No results query",
+            approach="rag",
+            status="NO_RESULTS",
+            async_log=False
+        )
+
+        with open(query_logger.AUDIT_LOG_FILE, "r") as f:
+            lines = f.readlines()
+            self.assertEqual(len(lines), 3)
+            data = [json.loads(line) for line in lines]
+            queries = [d["query_text"] for d in data]
+            self.assertNotIn("Show my runs", queries)
+            self.assertIn("Show my swimming activities", queries)
+            self.assertIn("Error query", queries)
+            self.assertIn("No results query", queries)
+
+    @patch('query_logger.get_db_connection')
     def test_fetch_failed_queries_fallback(self, mock_get_conn):
         """Test retrieving failed queries from JSONL audit log when DB is None."""
+        query_logger.LOG_FAILED_ONLY = False
         mock_get_conn.return_value = None  # DB unavailable
 
         # Log 1 success and 2 failures
         query_logger.log_query_event(
             query_text="valid query",
             status="SUCCESS",
+            retrieved_count=1,
             async_log=False
         )
         query_logger.log_query_event(
@@ -99,11 +160,12 @@ class TestQueryLogger(unittest.TestCase):
     @patch('query_logger.get_db_connection')
     def test_get_query_health_summary(self, mock_get_conn):
         """Test computing health summary metrics."""
+        query_logger.LOG_FAILED_ONLY = False
         mock_get_conn.return_value = None  # DB fallback
 
-        query_logger.log_query_event("q1", status="SUCCESS", latency_ms=100, async_log=False)
-        query_logger.log_query_event("q2", status="SUCCESS", latency_ms=200, async_log=False)
-        query_logger.log_query_event("q3", status="NO_RESULTS", latency_ms=50, async_log=False)
+        query_logger.log_query_event("q1", status="SUCCESS", retrieved_count=1, latency_ms=100, async_log=False)
+        query_logger.log_query_event("q2", status="SUCCESS", retrieved_count=1, latency_ms=200, async_log=False)
+        query_logger.log_query_event("q3", status="NO_RESULTS", retrieved_count=0, latency_ms=50, async_log=False)
 
         summary = query_logger.get_query_health_summary(days=7)
         self.assertEqual(summary["total_queries"], 3)
@@ -114,3 +176,4 @@ class TestQueryLogger(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

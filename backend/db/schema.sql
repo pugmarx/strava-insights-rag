@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS activities (
     duration INT,
     elevation_gain FLOAT DEFAULT 0,  -- Total elevation gain in meters
     elapsed_time INT,                -- Total wall-clock elapsed time in seconds
+    summary_polyline TEXT,           -- Google Encoded Polyline route track
     timestamp TIMESTAMP,
     embedding vector(384)  -- Vector storage for embeddings
 );
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS activities (
 -- Migration for existing databases
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS elevation_gain FLOAT DEFAULT 0;
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS elapsed_time INT;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS summary_polyline TEXT;
 
 -- Create table to persist Strava OAuth tokens across container restarts
 CREATE TABLE IF NOT EXISTS strava_tokens (
@@ -63,11 +65,22 @@ CREATE TABLE IF NOT EXISTS query_logs (
 CREATE INDEX IF NOT EXISTS query_logs_status_idx ON query_logs (status);
 CREATE INDEX IF NOT EXISTS query_logs_created_at_idx ON query_logs (created_at);
 
+-- Create table to cache detailed Strava activity streams (velocity, altitude, coordinates)
+CREATE TABLE IF NOT EXISTS activity_streams (
+    activity_id BIGINT PRIMARY KEY,
+    streams_json JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS activity_streams_created_at_idx ON activity_streams (created_at);
+
 -- Row Level Security (RLS) Enablement
 -- Blocks public PostgREST HTTP access in Supabase while preserving direct database connections for backend
 ALTER TABLE IF EXISTS activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS strava_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS query_cache ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS query_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS activity_streams ENABLE ROW LEVEL SECURITY;
+
 
 

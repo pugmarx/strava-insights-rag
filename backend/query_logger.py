@@ -11,6 +11,10 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOGS_DIR = os.path.join(PROJECT_ROOT, "logs")
 AUDIT_LOG_FILE = os.path.join(LOGS_DIR, "query_audit.jsonl")
 
+# Optimization: only persist failed, zero-result, or error queries by default
+LOG_FAILED_ONLY = os.getenv("LOG_FAILED_ONLY", "true").lower() in ("true", "1")
+
+
 
 def _ensure_logs_dir():
     """Ensure local logs directory exists for audit fallback."""
@@ -100,6 +104,12 @@ def log_query_event(query_text, approach="rag", status="SUCCESS", retrieved_coun
     """
     if not query_text:
         return
+
+    # If LOG_FAILED_ONLY is active, ignore queries that succeeded with results and no error
+    if LOG_FAILED_ONLY:
+        is_success = (status == "SUCCESS" or status is None) and (retrieved_count > 0) and not error_message
+        if is_success:
+            return
 
     # Trim response preview
     response_preview = None

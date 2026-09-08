@@ -7,6 +7,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root {
       /* Strava Brand Identity */
@@ -558,6 +560,173 @@
       margin-bottom: 0.75rem;
     }
 
+    /* Map Sections & Containers */
+    .response-map-section {
+      margin-top: 1rem;
+      padding-top: 0.875rem;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .response-map-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .response-map-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .map-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      background: rgba(252, 76, 2, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(252, 76, 2, 0.25);
+    }
+
+    .map-legend-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      flex-wrap: wrap;
+      padding: 0.35rem 0.6rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .legend-dot.green { background: #10b981; }
+    .legend-dot.yellow { background: #f59e0b; }
+    .legend-dot.red { background: #ef4444; }
+
+    /* Custom Leaflet Pins */
+    .milestone-pin-container {
+      background: transparent;
+      border: none;
+    }
+
+    .milestone-pin {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      border: 2px solid;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .milestone-pin:hover {
+      transform: scale(1.2);
+    }
+
+    /* Route Explorer Items */
+    .route-item-btn {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      padding: 0.625rem 0.75rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .route-item-btn:hover {
+      background: var(--bg-surface-hover);
+      border-color: var(--border-focus);
+    }
+
+    .route-item-btn.active {
+      background: var(--bg-surface-elevated);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    .route-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .route-item-sub {
+      display: flex;
+      gap: 0.6rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .map-stream-tooltip {
+      background: var(--bg-surface) !important;
+      color: var(--text-main) !important;
+      border: 1px solid var(--border-subtle) !important;
+      border-radius: var(--radius-sm) !important;
+      font-size: 0.75rem !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+      padding: 0.25rem 0.5rem !important;
+    }
+
+    /* Leaflet Dark Mode Container Fit */
+    .leaflet-container {
+      background: var(--bg-base) !important;
+      font-family: var(--font-sans) !important;
+    }
+
+    @media (max-width: 860px) {
+      #routesExplorerGrid {
+        grid-template-columns: 1fr !important;
+      }
+      #responseMapContainer {
+        height: 240px !important;
+      }
+      #explorerMapContainer {
+        min-height: 280px !important;
+      }
+      #personalHeatmapContainer {
+        height: 380px !important;
+      }
+    }
+
+
     /* Top Navigation Tabs */
     .nav-tabs {
       display: flex;
@@ -818,6 +987,9 @@
       <button class="nav-tab-btn" id="tabBtnBreakthroughs">
         <span>⛰️</span> Climbing
       </button>
+      <button class="nav-tab-btn" id="tabBtnRoutes">
+        <span>🗺️</span> Routes
+      </button>
     </div>
 
     <!-- Search View -->
@@ -883,6 +1055,27 @@
             </div>
             <div style="position: relative; height: 200px; width: 100%; margin-top: 0.4rem;">
               <canvas id="responseTrendCanvas"></canvas>
+            </div>
+          </div>
+
+          <!-- Dynamic Route Map (Rendered when activities with GPS polylines are retrieved) -->
+          <div id="responseMapSection" class="response-map-section" style="display: none;">
+            <div class="response-map-header">
+              <div class="response-map-title">
+                <span>🗺️</span> Route & Speed Map
+                <span id="responseMapCountBadge" class="map-badge">1 Route</span>
+              </div>
+              <div class="chart-type-toolbar" id="responseMapModeToolbar">
+                <button class="chart-type-btn active" data-map-mode="track" title="Standard Route Track">Route</button>
+                <button class="chart-type-btn" data-map-mode="speed" title="Speed & Pace Color Coding">Speed Heatmap</button>
+              </div>
+            </div>
+            <div id="responseMapContainer" style="height: 280px; width: 100%; border-radius: var(--radius-sm); overflow: hidden; position: relative;"></div>
+            <div id="responseMapLegend" class="map-legend-bar" style="display: none;">
+              <span class="legend-item"><span class="legend-dot green"></span> Fast (Sprint)</span>
+              <span class="legend-item"><span class="legend-dot yellow"></span> Steady Pace</span>
+              <span class="legend-item"><span class="legend-dot red"></span> Climb / Slow</span>
+              <span class="legend-item" id="responseMapMaxSpeedBadge" style="margin-left: auto; font-size: 0.75rem; color: var(--text-dim);"></span>
             </div>
           </div>
 
@@ -1094,6 +1287,80 @@
       </div>
     </div>
 
+    <!-- Routes & Personal Heatmap Explorer View -->
+    <div id="viewRoutes" style="display: none; flex-direction: column; gap: 1rem;">
+      <!-- Top Filter & Mode Bar -->
+      <div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; padding: 0.875rem 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <h2 style="font-size: 1.05rem; font-weight: 600;">Routes & Maps</h2>
+          <span id="routesTotalBadge" class="stats-badge" style="font-size: 0.75rem;">Loading routes...</span>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+          <!-- Sport Filter Pills -->
+          <div class="chart-type-toolbar" id="routesFilterToolbar">
+            <button class="chart-type-btn active" data-sport="all">All</button>
+            <button class="chart-type-btn" data-sport="Ride">🚴 Rides</button>
+            <button class="chart-type-btn" data-sport="Run">🏃 Runs</button>
+            <button class="chart-type-btn" data-sport="Hike">🥾 Hikes</button>
+          </div>
+          <!-- Mode Switch: Route Explorer vs Personal Heatmap -->
+          <div class="chart-type-toolbar" id="routesViewModeToolbar">
+            <button class="chart-type-btn active" data-view-mode="explorer" title="Inspect individual routes">Route Explorer</button>
+            <button class="chart-type-btn" data-view-mode="heatmap" title="Overlay all training corridors">🔥 Personal Heatmap</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Explorer Grid: Route List (Left) + Interactive Map (Right) -->
+      <div id="routesExplorerGrid" class="grid-container" style="grid-template-columns: 300px 1fr; align-items: stretch;">
+        <!-- Route Selector Card -->
+        <div class="card" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 540px;">
+          <div class="sidebar-section-title" style="margin-bottom: 0;">Recent GPS Workouts</div>
+          <div id="routesListContainer" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 0.4rem; padding-right: 0.25rem;">
+            <div style="color: var(--text-muted); font-size: 0.8125rem;">Loading routes...</div>
+          </div>
+        </div>
+
+        <!-- Main Map Canvas -->
+        <div class="card" style="display: flex; flex-direction: column; gap: 0.75rem; min-height: 540px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div id="selectedRouteTitle" style="font-weight: 600; font-size: 0.9375rem; color: var(--text-main);">
+              Select a route to view details
+            </div>
+            <div class="chart-type-toolbar" id="explorerMapModeToolbar">
+              <button class="chart-type-btn active" data-map-mode="track">Track</button>
+              <button class="chart-type-btn" data-map-mode="speed">Speed Heatmap</button>
+            </div>
+          </div>
+          <div id="explorerMapContainer" style="flex: 1; min-height: 380px; border-radius: var(--radius-sm); overflow: hidden; position: relative;"></div>
+          <div id="explorerMapLegend" class="map-legend-bar" style="display: none;">
+            <span class="legend-item"><span class="legend-dot green"></span> Fast (Sprint)</span>
+            <span class="legend-item"><span class="legend-dot yellow"></span> Steady Pace</span>
+            <span class="legend-item"><span class="legend-dot red"></span> Climb / Slow</span>
+          </div>
+          <div id="explorerMapStats" style="display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.8125rem; color: var(--text-muted); border-top: 1px solid var(--border-subtle); padding-top: 0.5rem;">
+            <div>Distance: <strong id="expDist" style="color: var(--text-main);">-</strong></div>
+            <div>Moving Time: <strong id="expDur" style="color: var(--text-main);">-</strong></div>
+            <div>Avg Speed/Pace: <strong id="expSpeed" style="color: var(--text-main);">-</strong></div>
+            <div>Elevation: <strong id="expElev" style="color: var(--text-main);">-</strong></div>
+            <div id="expTopSpeedWrap" style="display: none;">Top Speed: <strong id="expTopSpeed" style="color: var(--strava-emerald);">-</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Personal Heatmap Container (Full Width) -->
+      <div id="personalHeatmapCard" class="card" style="display: none; flex-direction: column; gap: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <h3 style="font-size: 0.9375rem; font-weight: 600;">🔥 Personal Training Heatmap</h3>
+            <p style="font-size: 0.75rem; color: var(--text-dim);">Overlays training corridors with glowing opacity. Frequent routes glow brighter.</p>
+          </div>
+          <span id="heatmapCountBadge" class="stats-badge" style="font-size: 0.75rem;">0 Routes Overlaid</span>
+        </div>
+        <div id="personalHeatmapContainer" style="height: 520px; width: 100%; border-radius: var(--radius-sm); overflow: hidden; position: relative;"></div>
+      </div>
+    </div>
+
     <footer class="app-footer">
       <div>Created by <a href="https://github.com/pugmarx" target="_blank" rel="noopener noreferrer">pugmarx</a>, fueled by ☕ and 🚴.</div>
       <div style="font-size: 0.65rem; color: var(--text-dim); margin-top: 0.35rem; opacity: 0.65;" id="footerBuildVersion">v1.0.0</div>
@@ -1120,6 +1387,267 @@
     let currentResponseChartData = null;
     let currentResponseTrendMetric = 'distances';
     let lastResponseRawText = '';
+
+    // Map State & Variables
+    let responseMapInstance = null;
+    let responseMapLayerGroup = null;
+    let currentResponseMapData = null;
+    let currentResponseMapMode = 'track';
+
+    let explorerMapInstance = null;
+    let explorerMapLayerGroup = null;
+    let currentExplorerRoute = null;
+    let currentExplorerMapMode = 'track';
+
+    let heatmapMapInstance = null;
+    let heatmapLayerGroup = null;
+
+    let allRoutesData = [];
+    let currentRoutesSportFilter = 'all';
+    let currentRoutesViewMode = 'explorer';
+
+    // Pure JavaScript Google Polyline Decoder
+    function decodePolyline(encoded) {
+      if (!encoded) return [];
+      let points = [];
+      let index = 0, len = encoded.length;
+      let lat = 0, lng = 0;
+      while (index < len) {
+        let b, shift = 0, result = 0;
+        do {
+          b = encoded.charCodeAt(index++) - 63;
+          result |= (b & 0x1f) << shift;
+          shift += 5;
+        } while (b >= 0x20);
+        let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lat += dlat;
+
+        shift = 0;
+        result = 0;
+        do {
+          b = encoded.charCodeAt(index++) - 63;
+          result |= (b & 0x1f) << shift;
+          shift += 5;
+        } while (b >= 0x20);
+        let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lng += dlng;
+
+        points.push([lat / 1e5, lng / 1e5]);
+      }
+      return points;
+    }
+
+    // High-performance CartoDB tile layer matching theme
+    function createMapTileLayer() {
+      const isLight = document.documentElement.classList.contains("theme-light");
+      const url = isLight
+        ? "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        : "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+      return L.tileLayer(url, {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19,
+        detectRetina: true
+      });
+    }
+
+    // Custom pulse milestone pin icon
+    function createMilestonePin(emoji, bgCol, borderCol) {
+      return L.divIcon({
+        className: 'milestone-pin-container',
+        html: `<div class="milestone-pin" style="background:${bgCol}; border-color:${borderCol};">${emoji}</div>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+        popupAnchor: [0, -13]
+      });
+    }
+
+    // Speed & Pace Gradient Segment Renderer
+    function renderSpeedGradientRoute(streamPoints, layerGroup) {
+      if (!streamPoints || streamPoints.length < 2) return;
+      const speeds = streamPoints.map(p => p.speed_kmh).filter(s => s > 1.0);
+      const minSpeed = speeds.length ? Math.min(...speeds) : 5.0;
+      const maxSpeed = speeds.length ? Math.max(...speeds) : 30.0;
+      const range = Math.max(maxSpeed - minSpeed, 4.0);
+
+      for (let i = 0; i < streamPoints.length - 1; i++) {
+        const p1 = streamPoints[i];
+        const p2 = streamPoints[i + 1];
+        const avgSpeed = (p1.speed_kmh + p2.speed_kmh) / 2.0;
+        const ratio = Math.max(0, Math.min(1, (avgSpeed - minSpeed) / range));
+        
+        let color;
+        if (ratio < 0.5) {
+          const r = Math.round(239 + (245 - 239) * (ratio * 2));
+          const g = Math.round(68 + (158 - 68) * (ratio * 2));
+          const b = Math.round(68 + (11 - 68) * (ratio * 2));
+          color = `rgb(${r}, ${g}, ${b})`;
+        } else {
+          const r = Math.round(245 + (16 - 245) * ((ratio - 0.5) * 2));
+          const g = Math.round(158 + (185 - 158) * ((ratio - 0.5) * 2));
+          const b = Math.round(11 + (129 - 11) * ((ratio - 0.5) * 2));
+          color = `rgb(${r}, ${g}, ${b})`;
+        }
+
+        const seg = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], {
+          color: color,
+          weight: 5,
+          opacity: 0.95,
+          lineCap: 'round',
+          lineJoin: 'round'
+        });
+        seg.bindTooltip(`⚡ ${avgSpeed.toFixed(1)} km/h • 🏔️ ${p1.altitude_m}m • ${(p1.distance_m/1000).toFixed(1)}km`, {
+          sticky: true,
+          className: 'map-stream-tooltip'
+        });
+        layerGroup.addLayer(seg);
+      }
+    }
+
+    // Render Query Response Map Widget
+    function renderResponseMap(mapData, mode = 'track') {
+      const section = document.getElementById("responseMapSection");
+      const container = document.getElementById("responseMapContainer");
+      const legend = document.getElementById("responseMapLegend");
+      const countBadge = document.getElementById("responseMapCountBadge");
+      const maxSpeedBadge = document.getElementById("responseMapMaxSpeedBadge");
+      if (!section || !container) return;
+
+      if (!mapData || !mapData.routes || mapData.routes.length === 0) {
+        section.style.display = "none";
+        if (responseMapInstance) {
+          responseMapInstance.remove();
+          responseMapInstance = null;
+          responseMapLayerGroup = null;
+        }
+        return;
+      }
+
+      section.style.display = "flex";
+      countBadge.textContent = `${mapData.routes.length} Route${mapData.routes.length > 1 ? 's' : ''}`;
+
+      if (!responseMapInstance) {
+        responseMapInstance = L.map('responseMapContainer', {
+          zoomControl: true,
+          scrollWheelZoom: !L.Browser.mobile,
+          preferCanvas: true
+        });
+        createMapTileLayer().addTo(responseMapInstance);
+        responseMapLayerGroup = L.layerGroup().addTo(responseMapInstance);
+      }
+
+      responseMapLayerGroup.clearLayers();
+      const allBounds = [];
+      const palette = ["#fc4c02", "#06b6d4", "#a855f7", "#10b981", "#f59e0b", "#ec4899", "#3b82f6"];
+
+      if (mode === 'speed' && mapData.routes.length === 1) {
+        const singleRoute = mapData.routes[0];
+        legend.style.display = "flex";
+        if (maxSpeedBadge) maxSpeedBadge.textContent = "Loading speed streams...";
+
+        fetch(`/api/activities/${singleRoute.activity_id}/streams`)
+          .then(res => res.json())
+          .then(streams => {
+            if (streams.has_streams && streams.points && streams.points.length >= 2) {
+              if (maxSpeedBadge) maxSpeedBadge.textContent = `⚡ Top: ${streams.max_speed_kmh} km/h • 🏔️ Peak: ${streams.peak_altitude_m}m`;
+              renderSpeedGradientRoute(streams.points, responseMapLayerGroup);
+
+              if (streams.top_speed_point) {
+                const tsp = streams.top_speed_point;
+                responseMapLayerGroup.addLayer(L.marker([tsp.lat, tsp.lng], {
+                  icon: createMilestonePin("⚡", "rgba(245, 158, 11, 0.3)", "#f59e0b")
+                }).bindPopup(`<strong>⚡ Top Speed Point</strong><br>${tsp.speed_kmh} km/h at ${(tsp.distance_m/1000).toFixed(1)}km`));
+              }
+
+              if (streams.peak_altitude_point) {
+                const pap = streams.peak_altitude_point;
+                responseMapLayerGroup.addLayer(L.marker([pap.lat, pap.lng], {
+                  icon: createMilestonePin("🏔️", "rgba(139, 92, 246, 0.3)", "#8b5cf6")
+                }).bindPopup(`<strong>🏔️ Peak Elevation</strong><br>${pap.altitude_m}m at ${(pap.distance_m/1000).toFixed(1)}km`));
+              }
+
+              if (streams.start_point) {
+                const sp = streams.start_point;
+                responseMapLayerGroup.addLayer(L.marker([sp.lat, sp.lng], {
+                  icon: createMilestonePin("🟢", "rgba(16, 185, 129, 0.3)", "#10b981")
+                }).bindPopup("<strong>Start</strong>"));
+              }
+              if (streams.finish_point) {
+                const fp = streams.finish_point;
+                responseMapLayerGroup.addLayer(L.marker([fp.lat, fp.lng], {
+                  icon: createMilestonePin("🏁", "rgba(239, 68, 68, 0.3)", "#ef4444")
+                }).bindPopup("<strong>Finish</strong>"));
+              }
+
+              const pts = streams.points.map(p => [p.lat, p.lng]);
+              responseMapInstance.fitBounds(L.latLngBounds(pts), { padding: [25, 25] });
+            } else {
+              renderStandardTrack(mapData.routes);
+            }
+          })
+          .catch(() => renderStandardTrack(mapData.routes));
+      } else {
+        legend.style.display = "none";
+        renderStandardTrack(mapData.routes);
+      }
+
+      function renderStandardTrack(routes) {
+        routes.forEach((route, idx) => {
+          const coords = decodePolyline(route.summary_polyline);
+          if (coords.length < 2) return;
+          coords.forEach(c => allBounds.push(c));
+
+          const color = routes.length === 1 ? '#fc4c02' : palette[idx % palette.length];
+          const poly = L.polyline(coords, {
+            color: color,
+            weight: routes.length === 1 ? 4 : 3,
+            opacity: 0.9,
+            lineCap: 'round',
+            lineJoin: 'round'
+          });
+
+          const popupContent = `
+            <div style="font-size:0.8125rem; font-family:var(--font-sans);">
+              <strong>${route.activity_type} on ${route.date}</strong><br>
+              Distance: <strong>${route.distance_km} km</strong><br>
+              Duration: <strong>${route.duration_str}</strong><br>
+              ${route.speed_kmh > 0 ? `Speed: <strong>${route.speed_kmh} km/h</strong><br>` : ''}
+              ${route.pace ? `Pace: <strong>${route.pace}</strong><br>` : ''}
+              ${route.elevation_m > 0 ? `Elevation: <strong>${route.elevation_m}m</strong>` : ''}
+            </div>
+          `;
+          poly.bindPopup(popupContent);
+          responseMapLayerGroup.addLayer(poly);
+
+          if (routes.length === 1) {
+            responseMapLayerGroup.addLayer(L.marker(coords[0], {
+              icon: createMilestonePin("🟢", "rgba(16, 185, 129, 0.3)", "#10b981")
+            }).bindPopup("<strong>Start</strong>"));
+            responseMapLayerGroup.addLayer(L.marker(coords[coords.length - 1], {
+              icon: createMilestonePin("🏁", "rgba(239, 68, 68, 0.3)", "#ef4444")
+            }).bindPopup("<strong>Finish</strong>"));
+          }
+        });
+
+        if (allBounds.length > 0) {
+          responseMapInstance.fitBounds(L.latLngBounds(allBounds), { padding: [25, 25] });
+        }
+      }
+
+      setTimeout(() => { if (responseMapInstance) responseMapInstance.invalidateSize(); }, 150);
+    }
+
+    // Response Map Mode Switcher
+    document.querySelectorAll("#responseMapModeToolbar .chart-type-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#responseMapModeToolbar .chart-type-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentResponseMapMode = btn.getAttribute("data-map-mode");
+        if (currentResponseMapData) {
+          renderResponseMap(currentResponseMapData, currentResponseMapMode);
+        }
+      });
+    });
 
     // Markdown-to-HTML parser (clean headers, paragraphs, lists, bold metrics, code)
     function renderMarkdown(text) {
@@ -1213,19 +1741,18 @@
         metricLabel = "Speed (km/h)";
         metricValues = chartData.speeds || [];
         metricUnit = "km/h";
-        strokeColor = "#3b82f6"; // Blue
-        fillBg = "rgba(59, 130, 246, 0.12)";
+        strokeColor = "#0284c7"; // Blue
+        fillBg = "rgba(2, 132, 199, 0.12)";
       }
 
       if (responseTrendChartInstance) {
         responseTrendChartInstance.destroy();
       }
 
-      const ctx = canvas.getContext("2d");
-      responseTrendChartInstance = new Chart(ctx, {
-        type: "line",
+      responseTrendChartInstance = new Chart(canvas, {
+        type: 'line',
         data: {
-          labels: chartData.labels,
+          labels: chartData.labels || [],
           datasets: [{
             label: metricLabel,
             data: metricValues,
@@ -1380,6 +1907,15 @@
         } else {
           currentResponseChartData = null;
           renderResponseTrendChart(null);
+        }
+
+        // Render route map if GPS polylines exist in response
+        if (data.map_data && data.map_data.routes && data.map_data.routes.length > 0) {
+          currentResponseMapData = data.map_data;
+          renderResponseMap(data.map_data, currentResponseMapMode);
+        } else {
+          currentResponseMapData = null;
+          renderResponseMap(null);
         }
 
         if (data.response) {
@@ -1540,8 +2076,19 @@
         if (anomalyChartInstance && viewAnomalies && viewAnomalies.style.display !== "none") {
           renderAnomalyChart();
         }
+        // Update map tile layers
+        [responseMapInstance, explorerMapInstance, heatmapMapInstance].forEach(m => {
+          if (m) {
+            m.eachLayer(layer => {
+              if (layer instanceof L.TileLayer) {
+                m.removeLayer(layer);
+              }
+            });
+            createMapTileLayer().addTo(m);
+          }
+        });
       } catch (e) {
-        console.warn("Chart refresh deferred:", e);
+        console.warn("Theme refresh note:", e);
       }
     }
 
@@ -1566,21 +2113,27 @@
     }
 
     // ---------------------------------------------------------------------------
-    // 3-Way Navigation Tabs
+    // 4-Way Navigation Tabs
     // ---------------------------------------------------------------------------
     const tabBtnSearch = document.getElementById("tabBtnSearch");
     const tabBtnAnomalies = document.getElementById("tabBtnAnomalies");
     const tabBtnBreakthroughs = document.getElementById("tabBtnBreakthroughs");
+    const tabBtnRoutes = document.getElementById("tabBtnRoutes");
     const viewSearch = document.getElementById("viewSearch");
     const viewAnomalies = document.getElementById("viewAnomalies");
     const viewBreakthroughs = document.getElementById("viewBreakthroughs");
+    const viewRoutes = document.getElementById("viewRoutes");
 
     function activateTab(activeBtn, activeView) {
-      [tabBtnSearch, tabBtnAnomalies, tabBtnBreakthroughs].forEach(b => b.classList.remove("active"));
-      [viewSearch, viewAnomalies, viewBreakthroughs].forEach(v => v.style.display = "none");
+      [tabBtnSearch, tabBtnAnomalies, tabBtnBreakthroughs, tabBtnRoutes].forEach(b => {
+        if (b) b.classList.remove("active");
+      });
+      [viewSearch, viewAnomalies, viewBreakthroughs, viewRoutes].forEach(v => {
+        if (v) v.style.display = "none";
+      });
 
-      activeBtn.classList.add("active");
-      activeView.style.display = activeView === viewSearch ? "grid" : "flex";
+      if (activeBtn) activeBtn.classList.add("active");
+      if (activeView) activeView.style.display = activeView === viewSearch ? "grid" : "flex";
     }
 
     tabBtnSearch.addEventListener("click", () => activateTab(tabBtnSearch, viewSearch));
@@ -1593,6 +2146,286 @@
     tabBtnBreakthroughs.addEventListener("click", () => {
       activateTab(tabBtnBreakthroughs, viewBreakthroughs);
       loadAnalyticsData();
+    });
+
+    if (tabBtnRoutes) {
+      tabBtnRoutes.addEventListener("click", () => {
+        activateTab(tabBtnRoutes, viewRoutes);
+        initRoutesTab();
+      });
+    }
+
+    // ---------------------------------------------------------------------------
+    // Routes Explorer & Personal Heatmap
+    // ---------------------------------------------------------------------------
+    function initRoutesTab() {
+      if (allRoutesData.length === 0) {
+        loadRoutesData(currentRoutesSportFilter);
+      } else {
+        setTimeout(() => {
+          if (explorerMapInstance) explorerMapInstance.invalidateSize();
+          if (heatmapMapInstance) heatmapMapInstance.invalidateSize();
+        }, 150);
+      }
+    }
+
+    function loadRoutesData(sportFilter = 'all') {
+      currentRoutesSportFilter = sportFilter;
+      const container = document.getElementById("routesListContainer");
+      const badge = document.getElementById("routesTotalBadge");
+      if (container) container.innerHTML = '<div style="color:var(--text-muted); font-size:0.8125rem;">Loading routes...</div>';
+
+      fetch(`/api/routes?type=${sportFilter}&limit=100`)
+        .then(res => res.json())
+        .then(data => {
+          allRoutesData = data.routes || [];
+          if (badge) badge.textContent = `${allRoutesData.length} GPS Routes`;
+
+          if (currentRoutesViewMode === 'explorer') {
+            renderRoutesList(allRoutesData);
+            if (allRoutesData.length > 0) {
+              selectExplorerRoute(allRoutesData[0]);
+            }
+          } else {
+            renderPersonalHeatmap(allRoutesData);
+          }
+        })
+        .catch(err => {
+          if (container) container.innerHTML = `<div style="color:var(--text-dim); font-size:0.8125rem;">Failed to load routes: ${err.message}</div>`;
+        });
+    }
+
+    function renderRoutesList(routes) {
+      const container = document.getElementById("routesListContainer");
+      if (!container) return;
+
+      if (!routes || routes.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:0.8125rem;">No GPS routes found matching filter.</div>';
+        return;
+      }
+
+      container.innerHTML = routes.map((r, i) => `
+        <button class="route-item-btn ${i === 0 ? 'active' : ''}" data-route-id="${r.id}">
+          <div class="route-item-header">
+            <span>${r.type === 'Ride' ? '🚴' : r.type === 'Run' ? '🏃' : '🥾'} ${r.type}</span>
+            <span style="font-size:0.75rem; color:var(--text-dim); font-weight:normal;">${r.date}</span>
+          </div>
+          <div class="route-item-sub">
+            <span><strong>${r.distance_km}</strong> km</span>
+            <span><strong>${r.duration_str}</strong></span>
+            ${r.speed_kmh > 0 ? `<span>${r.speed_kmh} km/h</span>` : ''}
+            ${r.pace ? `<span>${r.pace}</span>` : ''}
+          </div>
+        </button>
+      `).join('');
+
+      container.querySelectorAll(".route-item-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          container.querySelectorAll(".route-item-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          const routeId = parseInt(btn.getAttribute("data-route-id"), 10);
+          const found = routes.find(r => r.id === routeId);
+          if (found) selectExplorerRoute(found);
+        });
+      });
+    }
+
+    function selectExplorerRoute(route) {
+      currentExplorerRoute = route;
+      const title = document.getElementById("selectedRouteTitle");
+      const expDist = document.getElementById("expDist");
+      const expDur = document.getElementById("expDur");
+      const expSpeed = document.getElementById("expSpeed");
+      const expElev = document.getElementById("expElev");
+      const expTopSpeed = document.getElementById("expTopSpeed");
+      const expTopSpeedWrap = document.getElementById("expTopSpeedWrap");
+      const legend = document.getElementById("explorerMapLegend");
+
+      if (title) title.textContent = `${route.type} • ${route.date} (${route.distance_km} km)`;
+      if (expDist) expDist.textContent = `${route.distance_km} km`;
+      if (expDur) expDur.textContent = route.duration_str;
+      if (expSpeed) expSpeed.textContent = route.pace || `${route.speed_kmh} km/h`;
+      if (expElev) expElev.textContent = route.elevation_m > 0 ? `${route.elevation_m} m` : 'Flat';
+      if (expTopSpeedWrap) expTopSpeedWrap.style.display = "none";
+
+      if (!explorerMapInstance) {
+        explorerMapInstance = L.map('explorerMapContainer', {
+          zoomControl: true,
+          scrollWheelZoom: !L.Browser.mobile,
+          preferCanvas: true
+        });
+        createMapTileLayer().addTo(explorerMapInstance);
+        explorerMapLayerGroup = L.layerGroup().addTo(explorerMapInstance);
+      }
+
+      explorerMapLayerGroup.clearLayers();
+
+      if (currentExplorerMapMode === 'speed') {
+        if (legend) legend.style.display = "flex";
+        fetch(`/api/activities/${route.id}/streams`)
+          .then(res => res.json())
+          .then(streams => {
+            if (streams.has_streams && streams.points && streams.points.length >= 2) {
+              if (expTopSpeedWrap && expTopSpeed && streams.max_speed_kmh > 0) {
+                expTopSpeed.textContent = `${streams.max_speed_kmh} km/h`;
+                expTopSpeedWrap.style.display = "block";
+              }
+              renderSpeedGradientRoute(streams.points, explorerMapLayerGroup);
+
+              if (streams.top_speed_point) {
+                const tsp = streams.top_speed_point;
+                explorerMapLayerGroup.addLayer(L.marker([tsp.lat, tsp.lng], {
+                  icon: createMilestonePin("⚡", "rgba(245, 158, 11, 0.3)", "#f59e0b")
+                }).bindPopup(`<strong>⚡ Top Speed Point</strong><br>${tsp.speed_kmh} km/h at ${(tsp.distance_m/1000).toFixed(1)}km`));
+              }
+
+              if (streams.peak_altitude_point) {
+                const pap = streams.peak_altitude_point;
+                explorerMapLayerGroup.addLayer(L.marker([pap.lat, pap.lng], {
+                  icon: createMilestonePin("🏔️", "rgba(139, 92, 246, 0.3)", "#8b5cf6")
+                }).bindPopup(`<strong>🏔️ Peak Elevation</strong><br>${pap.altitude_m}m at ${(pap.distance_m/1000).toFixed(1)}km`));
+              }
+
+              if (streams.start_point) {
+                const sp = streams.start_point;
+                explorerMapLayerGroup.addLayer(L.marker([sp.lat, sp.lng], {
+                  icon: createMilestonePin("🟢", "rgba(16, 185, 129, 0.3)", "#10b981")
+                }).bindPopup("<strong>Start</strong>"));
+              }
+              if (streams.finish_point) {
+                const fp = streams.finish_point;
+                explorerMapLayerGroup.addLayer(L.marker([fp.lat, fp.lng], {
+                  icon: createMilestonePin("🏁", "rgba(239, 68, 68, 0.3)", "#ef4444")
+                }).bindPopup("<strong>Finish</strong>"));
+              }
+
+              const pts = streams.points.map(p => [p.lat, p.lng]);
+              explorerMapInstance.fitBounds(L.latLngBounds(pts), { padding: [25, 25] });
+            } else {
+              renderExplorerTrack(route);
+            }
+          })
+          .catch(() => renderExplorerTrack(route));
+      } else {
+        if (legend) legend.style.display = "none";
+        renderExplorerTrack(route);
+      }
+
+      function renderExplorerTrack(r) {
+        const coords = decodePolyline(r.summary_polyline);
+        if (coords.length < 2) return;
+
+        const poly = L.polyline(coords, {
+          color: '#fc4c02',
+          weight: 4,
+          opacity: 0.95,
+          lineCap: 'round',
+          lineJoin: 'round'
+        });
+        explorerMapLayerGroup.addLayer(poly);
+
+        explorerMapLayerGroup.addLayer(L.marker(coords[0], {
+          icon: createMilestonePin("🟢", "rgba(16, 185, 129, 0.3)", "#10b981")
+        }).bindPopup("<strong>Start</strong>"));
+
+        explorerMapLayerGroup.addLayer(L.marker(coords[coords.length - 1], {
+          icon: createMilestonePin("🏁", "rgba(239, 68, 68, 0.3)", "#ef4444")
+        }).bindPopup("<strong>Finish</strong>"));
+
+        explorerMapInstance.fitBounds(L.latLngBounds(coords), { padding: [25, 25] });
+      }
+
+      setTimeout(() => { if (explorerMapInstance) explorerMapInstance.invalidateSize(); }, 150);
+    }
+
+    function renderPersonalHeatmap(routes) {
+      const container = document.getElementById("personalHeatmapContainer");
+      const badge = document.getElementById("heatmapCountBadge");
+      if (!container) return;
+
+      if (!heatmapMapInstance) {
+        heatmapMapInstance = L.map('personalHeatmapContainer', {
+          zoomControl: true,
+          scrollWheelZoom: !L.Browser.mobile,
+          preferCanvas: true
+        });
+        createMapTileLayer().addTo(heatmapMapInstance);
+        heatmapLayerGroup = L.layerGroup().addTo(heatmapMapInstance);
+      }
+
+      heatmapLayerGroup.clearLayers();
+      const allBounds = [];
+      let renderedCount = 0;
+
+      routes.forEach(r => {
+        const coords = decodePolyline(r.summary_polyline);
+        if (coords.length < 2) return;
+        coords.forEach(c => allBounds.push(c));
+        renderedCount++;
+
+        // Glowing translucent overlay (lines naturally intensify in frequent training corridors)
+        const poly = L.polyline(coords, {
+          color: '#fc4c02',
+          weight: 2.5,
+          opacity: 0.22,
+          lineCap: 'round',
+          lineJoin: 'round'
+        });
+        poly.bindTooltip(`${r.type} • ${r.date} (${r.distance_km}km)`, { sticky: true });
+        heatmapLayerGroup.addLayer(poly);
+      });
+
+      if (badge) badge.textContent = `${renderedCount} Routes Overlaid`;
+      if (allBounds.length > 0) {
+        heatmapMapInstance.fitBounds(L.latLngBounds(allBounds), { padding: [20, 20] });
+      }
+
+      setTimeout(() => { if (heatmapMapInstance) heatmapMapInstance.invalidateSize(); }, 150);
+    }
+
+    // Explorer Mode Switcher (Track vs Speed)
+    document.querySelectorAll("#explorerMapModeToolbar .chart-type-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#explorerMapModeToolbar .chart-type-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentExplorerMapMode = btn.getAttribute("data-map-mode");
+        if (currentExplorerRoute) selectExplorerRoute(currentExplorerRoute);
+      });
+    });
+
+    // Routes Sport Filter Pills (All / Rides / Runs / Hikes)
+    document.querySelectorAll("#routesFilterToolbar .chart-type-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#routesFilterToolbar .chart-type-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const sport = btn.getAttribute("data-sport");
+        loadRoutesData(sport);
+      });
+    });
+
+    // View Mode Switcher: Route Explorer vs Personal Heatmap
+    document.querySelectorAll("#routesViewModeToolbar .chart-type-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#routesViewModeToolbar .chart-type-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentRoutesViewMode = btn.getAttribute("data-view-mode");
+
+        const expGrid = document.getElementById("routesExplorerGrid");
+        const heatCard = document.getElementById("personalHeatmapCard");
+
+        if (currentRoutesViewMode === 'heatmap') {
+          if (expGrid) expGrid.style.display = "none";
+          if (heatCard) heatCard.style.display = "flex";
+          renderPersonalHeatmap(allRoutesData);
+        } else {
+          if (heatCard) heatCard.style.display = "none";
+          if (expGrid) expGrid.style.display = "grid";
+          renderRoutesList(allRoutesData);
+          if (allRoutesData.length > 0) {
+            selectExplorerRoute(allRoutesData[0]);
+          }
+        }
+      });
     });
 
     // ---------------------------------------------------------------------------

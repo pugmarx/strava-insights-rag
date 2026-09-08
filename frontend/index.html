@@ -1482,7 +1482,7 @@
     syncButton.addEventListener("click", () => {
       syncButton.disabled = true;
       syncBtnText.classList.add("syncing-spin");
-      syncStatusMessage.textContent = "Connecting to Strava...";
+      syncStatusMessage.textContent = "Fetching latest activity data...";
 
       fetch('/api/sync', {
         method: "POST",

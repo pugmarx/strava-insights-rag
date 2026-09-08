@@ -45,3 +45,27 @@ CREATE INDEX IF NOT EXISTS query_cache_embedding_idx
 ON query_cache USING ivfflat (embedding vector_cosine_ops)
 WITH (lists = 20);
 
+-- Create table to log queries, failure reasons, and performance metrics
+CREATE TABLE IF NOT EXISTS query_logs (
+    id SERIAL PRIMARY KEY,
+    query_text TEXT NOT NULL,
+    approach VARCHAR(30) DEFAULT 'rag',
+    status VARCHAR(30) NOT NULL,  -- SUCCESS, NO_RESULTS, ERROR, UNRECOGNIZED
+    retrieved_count INT DEFAULT 0,
+    error_message TEXT,
+    response_preview TEXT,
+    latency_ms INT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS query_logs_status_idx ON query_logs (status);
+CREATE INDEX IF NOT EXISTS query_logs_created_at_idx ON query_logs (created_at);
+
+-- Row Level Security (RLS) Enablement
+-- Blocks public PostgREST HTTP access in Supabase while preserving direct database connections for backend
+ALTER TABLE IF EXISTS activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS strava_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS query_cache ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS query_logs ENABLE ROW LEVEL SECURITY;
+
+

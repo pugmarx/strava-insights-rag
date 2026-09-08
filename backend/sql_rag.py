@@ -155,6 +155,75 @@ def execute_direct_sql(sql_query, limit, debug=False):
         conn.close()
 
 
+def extract_recency_and_limit(user_query):
+    """
+    Extract recency keywords and item limits from queries like:
+    - 'last 5 rides' -> (is_recency=True, limit=5, is_generic=False)
+    - 'last 10 activities' -> (is_recency=True, limit=10, is_generic=True)
+    - 'last ride' / 'latest activity' -> (is_recency=True, limit=1, is_generic=False/True)
+    - 'past three workouts' -> (is_recency=True, limit=3, is_generic=False)
+    - 'last rides' / 'recent activities' -> (is_recency=True, limit=5, is_generic=False/True)
+    """
+    import re
+    query_lower = user_query.lower()
+    
+    word_to_num = {
+        'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+        'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+        'eleven': 11, 'twelve': 12, 'fifteen': 15, 'twenty': 20
+    }
+    
+    recency_keywords = ['last', 'latest', 'recent', 'past', 'previous', 'newest']
+    has_recency_word = any(re.search(r'\b' + k + r'\b', query_lower) for k in recency_keywords)
+    if not has_recency_word:
+        return False, None, False
+
+    # Check if this is a time-duration interval like 'last 3 months' or 'past 2 weeks' without an item count
+    is_time_duration_only = bool(re.search(
+        r'\b(?:last|past|previous)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(month|months|mo|mos|m|week|weeks|w|day|days|d|year|years|y)\b',
+        query_lower
+    ))
+    has_item_count = bool(re.search(
+        r'\b(?:last|latest|recent|past|previous|newest)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*(?:rides|ride|runs|run|hikes|hike|walks|walk|swims|swim|activities|activity|workouts|workout|sessions|session)?\b',
+        query_lower
+    ))
+
+    # Generic vs specific sport detection
+    has_specific_sport = any(w in query_lower for w in ['ride', 'rides', 'bike', 'cycling', 'cycl', 'run', 'runs', 'hike', 'hikes', 'walk', 'walks', 'swim', 'swims'])
+    is_generic = bool(re.search(r'\b(activities|activity|workouts|workout|sessions|session|exercises|exercise)\b', query_lower)) and not has_specific_sport
+
+    if is_time_duration_only and not has_item_count:
+        return True, None, is_generic
+
+    # Extract limit N
+    count_match = re.search(
+        r'\b(?:last|latest|recent|past|previous|newest)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\b',
+        query_lower
+    )
+    if count_match:
+        raw_num = count_match.group(1)
+        limit = word_to_num.get(raw_num, int(raw_num) if raw_num.isdigit() else 5)
+        return True, limit, is_generic
+
+    # Check for singular: 'last ride', 'latest activity', 'last run', 'last workout', 'latest session'
+    is_singular = bool(re.search(
+        r'\b(?:last|latest|recent|past|previous|newest)\s+(?:ride|run|hike|walk|swim|workout|activity|session)\b',
+        query_lower
+    ))
+    if is_singular:
+        return True, 1, is_generic
+
+    # Check for plural without number: 'last rides', 'recent activities', 'latest runs'
+    is_plural = bool(re.search(
+        r'\b(?:last|latest|recent|past|previous|newest)\s+(?:rides|runs|hikes|walks|swims|workouts|activities|sessions)\b',
+        query_lower
+    ))
+    if is_plural:
+        return True, 5, is_generic
+
+    return True, None, is_generic
+
+
 def extract_time_filters(user_query):
     """
     Extract date/time filters from user query, supporting relative terms like
@@ -251,7 +320,7 @@ def extract_time_filters(user_query):
 
 def retrieve_similar_activities(user_query, top_k=5):
     """
-    Smart RAG Retrieval: Handle different query types, multi-activity filters, and chronological listings.
+    Smart RAG Retrieval: Handle recency & limit queries, multi-activity filters, and chronological listings.
     """
     query_embedding = compute_embedding(user_query)
     query_lower = user_query.lower()
@@ -264,6 +333,9 @@ def retrieve_similar_activities(user_query, top_k=5):
     
     try:
         embedding_list = query_embedding
+        
+        # Detect recency and item count limits (e.g. 'last 5 rides', 'last 10 activities', 'last ride')
+        is_recency, rec_limit, is_generic = extract_recency_and_limit(user_query)
         
         # Detect query patterns and build appropriate SQL
         base_select = """
@@ -279,16 +351,17 @@ def retrieve_similar_activities(user_query, top_k=5):
         
         # 1. Collect all mentioned activity types (supports multi-activity queries like 'cycling and hiking')
         matched_types = []
-        if 'run' in query_lower:
-            matched_types.extend(['Run', 'TrailRun', 'VirtualRun'])
-        if any(word in query_lower for word in ['ride', 'cycling', 'bike', 'cycl']):
-            matched_types.extend(['Ride', 'VirtualRide', 'EBikeRide', 'GravelRide', 'MountainBikeRide'])
-        if any(word in query_lower for word in ['hike', 'hiking', 'trek', 'walk', 'walking']):
-            matched_types.extend(['Hike', 'Walk'])
-        if any(word in query_lower for word in ['workout', 'workouts', 'weight', 'strength', 'gym', 'training']):
-            matched_types.extend(['WeightTraining', 'Workout'])
-        if any(word in query_lower for word in ['swim', 'swimming']):
-            matched_types.extend(['Swim'])
+        if not is_generic:
+            if 'run' in query_lower:
+                matched_types.extend(['Run', 'TrailRun', 'VirtualRun'])
+            if any(word in query_lower for word in ['ride', 'cycling', 'bike', 'cycl']):
+                matched_types.extend(['Ride', 'VirtualRide', 'EBikeRide', 'GravelRide', 'MountainBikeRide'])
+            if any(word in query_lower for word in ['hike', 'hiking', 'trek', 'walk', 'walking']):
+                matched_types.extend(['Hike', 'Walk'])
+            if any(word in query_lower for word in ['workout', 'workouts', 'weight', 'strength', 'gym', 'training']):
+                matched_types.extend(['WeightTraining', 'Workout'])
+            if any(word in query_lower for word in ['swim', 'swimming']):
+                matched_types.extend(['Swim'])
 
         if matched_types:
             types_str = ", ".join(f"'{t}'" for t in set(matched_types))
@@ -299,10 +372,12 @@ def retrieve_similar_activities(user_query, top_k=5):
         where_conditions.extend(time_filters)
         
         # 3. Detect if query is a listing / timeline / trend query
-        is_listing_query = any(k in query_lower for k in ['list', 'show', 'all', 'activities in', 'history', 'log', 'what did i do', 'how many', 'summary', 'everything', 'trend', 'trending', 'progression', 'over time']) or bool(time_filters)
+        is_listing_query = is_recency or any(k in query_lower for k in ['list', 'show', 'all', 'activities in', 'history', 'log', 'what did i do', 'how many', 'summary', 'everything', 'trend', 'trending', 'progression', 'over time']) or bool(time_filters)
         
         # 4. Handle sorting logic
-        if any(word in query_lower for word in ['climb', 'climbs', 'climbing', 'elevation', 'mountain', 'hill', 'hilly', 'ascent']):
+        if is_recency:
+            order_by = "timestamp DESC"
+        elif any(word in query_lower for word in ['climb', 'climbs', 'climbing', 'elevation', 'mountain', 'hill', 'hilly', 'ascent']):
             order_by = "elevation_gain DESC"
         elif any(word in query_lower for word in ['longest', 'best', 'top', 'max', 'most']) and 'similar' not in query_lower:
             if any(word in query_lower for word in ['workout', 'workouts', 'weight', 'strength', 'gym', 'training']):
@@ -317,8 +392,13 @@ def retrieve_similar_activities(user_query, top_k=5):
         elif 'shortest' in query_lower:
             order_by = "distance ASC"
         
-        # For timeline/listing queries, retrieve enough items so the whole month/period is represented
-        fetch_limit = max(top_k, 60) if is_listing_query else top_k
+        # Determine fetch limit
+        if is_recency and rec_limit is not None:
+            fetch_limit = rec_limit
+        elif is_listing_query:
+            fetch_limit = max(top_k, 60)
+        else:
+            fetch_limit = top_k
         
         # Build final query
         where_clause = " WHERE " + " AND ".join(where_conditions) if where_conditions else ""
@@ -372,6 +452,7 @@ def retrieve_similar_activities(user_query, top_k=5):
     finally:
         cursor.close()
         conn.close()
+
 
 def build_context(retrieved_activities):
     """
@@ -523,6 +604,7 @@ Instructions & Guardrails:
 - Bold key metrics (e.g. **14.2 km**, **4:45/km pace**, **320m elevation**, **1h 15m**).
 - When listing activities, format each as a clean bullet: `- **[Type] on YYYY-MM-DD**: Distance, Duration, Elevation, Pace/Speed`.
 - When answering relative time queries (like 'this month', 'this year', 'last month'), refer to Today's Date ({current_date_str}).
+- For recency queries (like 'last N rides', 'last N activities', 'last workout'), present all retrieved activities in reverse chronological order with exact dates, distances, durations, and key metrics.
 - For WeightTraining and Workout activities, focus on duration as the main metric.
 - For running activities, pace (min/km) is key. For cycling, highlight distance, speed, and elevation gain.
 - If analyzing trends, summarize progression (e.g. volume changes, pace improvements).

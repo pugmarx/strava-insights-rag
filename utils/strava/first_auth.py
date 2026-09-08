@@ -68,7 +68,7 @@ def exchange_code_for_token(auth_code):
                 "expires_at": token_data.get("expires_at", 0)
             })
             if saved_db:
-                print("✅ Tokens successfully synced to Supabase database!")
+                print("✅ Tokens successfully synced to database!")
         except Exception as e:
             print(f"ℹ️ (Note: Could not save to DB directly: {e})")
 

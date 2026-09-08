@@ -8,6 +8,7 @@ project_root = os.path.dirname(backend_dir)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
+import time
 from dotenv import load_dotenv
 load_dotenv(os.path.join(project_root, ".env"))
 load_dotenv()
@@ -18,6 +19,7 @@ from sql_rag import handle_rag_query, hybrid_query_handler
 from strava_service import sync_single_activity, delete_activity, sync_incremental, get_latest_activity_timestamp
 from token_manager import get_db_connection
 from cache_manager import init_cache_table, invalidate_all_caches
+from query_logger import init_query_log_table, log_query_event, fetch_failed_queries, get_query_health_summary
 from version import __version__, BUILD_VERSION
 
 # Initialize Flask app
@@ -33,21 +35,29 @@ def add_version_headers(response):
 STRAVA_VERIFY_TOKEN = os.getenv("STRAVA_VERIFY_TOKEN", "STRAVA_INSIGHTS_WEBHOOK_VERIFY_TOKEN")
 
 def _init_db_schema():
-    """Ensure elevation_gain column and query_cache table exist on startup."""
+    """Ensure elevation_gain column, query_cache, and query_logs tables exist on startup with RLS enabled."""
     conn = get_db_connection()
     if conn:
         try:
             with conn.cursor() as cur:
                 cur.execute("ALTER TABLE activities ADD COLUMN IF NOT EXISTS elevation_gain FLOAT DEFAULT 0;")
+                cur.execute("""
+                    ALTER TABLE IF EXISTS activities ENABLE ROW LEVEL SECURITY;
+                    ALTER TABLE IF EXISTS strava_tokens ENABLE ROW LEVEL SECURITY;
+                    ALTER TABLE IF EXISTS query_cache ENABLE ROW LEVEL SECURITY;
+                    ALTER TABLE IF EXISTS query_logs ENABLE ROW LEVEL SECURITY;
+                """)
                 conn.commit()
-                print("[DB] Schema verified: elevation_gain column active.")
+                print("[DB] Schema verified: elevation_gain active & RLS enabled across tables.")
         except Exception as e:
             print(f"[DB] Schema migration check note: {e}")
         finally:
             conn.close()
     
-    # Initialize query_cache table
+    # Initialize query_cache and query_logs tables
     init_cache_table()
+    init_query_log_table()
+
 
 # Run non-blocking schema check
 threading.Thread(target=_init_db_schema, daemon=True).start()
@@ -76,6 +86,7 @@ DEBUG_MODE = os.getenv("DEBUG", "false").lower() in ("true", "1")
 @app.route("/query", methods=["POST"])
 def query():
     """API endpoint to handle user questions using RAG approach."""
+    start_time = time.time()
     data = request.get_json() or {}
     user_question = data.get("question", "").strip()
     if not user_question:
@@ -84,7 +95,28 @@ def query():
         return jsonify({"error": "Question is too long (maximum 500 characters)"}), 400
     
     try:
-        response, chart_data = handle_rag_query(user_question, debug=DEBUG_MODE, return_chart_data=True)
+        rag_result = handle_rag_query(user_question, debug=DEBUG_MODE, return_chart_data=True)
+        if isinstance(rag_result, tuple) and len(rag_result) >= 2:
+            response, chart_data = rag_result[0], rag_result[1]
+        else:
+            response, chart_data = rag_result, None
+
+        latency_ms = int((time.time() - start_time) * 1000)
+        
+        # Determine status and activity count
+        retrieved_count = len(chart_data.get("points", [])) if chart_data and isinstance(chart_data, dict) else 0
+        is_no_results = not response or "couldn't find any relevant activities" in str(response).lower() or "no activities found" in str(response).lower()
+        status = "NO_RESULTS" if is_no_results else "SUCCESS"
+        
+        log_query_event(
+            query_text=user_question,
+            approach="rag",
+            status=status,
+            retrieved_count=retrieved_count,
+            response=response,
+            latency_ms=latency_ms
+        )
+
         return jsonify({
             "question": user_question,
             "response": response,
@@ -92,12 +124,18 @@ def query():
             "approach": "RAG"
         })
     except (ConnectionError, TimeoutError) as e:
+        latency_ms = int((time.time() - start_time) * 1000)
+        log_query_event(user_question, approach="rag", status="ERROR", error_message=str(e), latency_ms=latency_ms)
         print(f"Connection error processing query: {e}")
         return jsonify({"error": "Service temporarily unavailable"}), 503
     except ValueError as e:
+        latency_ms = int((time.time() - start_time) * 1000)
+        log_query_event(user_question, approach="rag", status="UNRECOGNIZED", error_message=str(e), latency_ms=latency_ms)
         print(f"Validation error processing query: {e}")
         return jsonify({"error": "Invalid query format"}), 400
     except Exception as e:
+        latency_ms = int((time.time() - start_time) * 1000)
+        log_query_event(user_question, approach="rag", status="ERROR", error_message=str(e), latency_ms=latency_ms)
         print(f"Unexpected error processing query: {e}")
         return jsonify({"error": "Failed to process query"}), 500
 
@@ -105,6 +143,7 @@ def query():
 @app.route("/hybrid-query", methods=["POST"])
 def hybrid_query():
     """API endpoint for hybrid RAG+SQL approach."""
+    start_time = time.time()
     data = request.get_json() or {}
     user_question = data.get("question", "").strip()
     if not user_question:
@@ -113,7 +152,28 @@ def hybrid_query():
         return jsonify({"error": "Question is too long (maximum 500 characters)"}), 400
     
     try:
-        response, chart_data = hybrid_query_handler(user_question, return_chart_data=True)
+        hybrid_result = hybrid_query_handler(user_question, return_chart_data=True)
+        if isinstance(hybrid_result, tuple) and len(hybrid_result) >= 2:
+            response, chart_data = hybrid_result[0], hybrid_result[1]
+        else:
+            response, chart_data = hybrid_result, None
+
+        latency_ms = int((time.time() - start_time) * 1000)
+        
+        # Determine status and activity count
+        retrieved_count = len(chart_data.get("points", [])) if chart_data and isinstance(chart_data, dict) else 0
+        is_no_results = not response or "couldn't find any relevant activities" in str(response).lower() or "no activities found" in str(response).lower()
+        status = "NO_RESULTS" if is_no_results else "SUCCESS"
+        
+        log_query_event(
+            query_text=user_question,
+            approach="hybrid",
+            status=status,
+            retrieved_count=retrieved_count,
+            response=response,
+            latency_ms=latency_ms
+        )
+
         return jsonify({
             "question": user_question,
             "response": response,
@@ -121,14 +181,38 @@ def hybrid_query():
             "approach": "Hybrid RAG+SQL"
         })
     except (ConnectionError, TimeoutError) as e:
+        latency_ms = int((time.time() - start_time) * 1000)
+        log_query_event(user_question, approach="hybrid", status="ERROR", error_message=str(e), latency_ms=latency_ms)
         print(f"Connection error processing hybrid query: {e}")
         return jsonify({"error": "Service temporarily unavailable"}), 503
     except ValueError as e:
+        latency_ms = int((time.time() - start_time) * 1000)
+        log_query_event(user_question, approach="hybrid", status="UNRECOGNIZED", error_message=str(e), latency_ms=latency_ms)
         print(f"Validation error processing hybrid query: {e}")
         return jsonify({"error": "Invalid query format"}), 400
     except Exception as e:
+        latency_ms = int((time.time() - start_time) * 1000)
+        log_query_event(user_question, approach="hybrid", status="ERROR", error_message=str(e), latency_ms=latency_ms)
         print(f"Unexpected error processing hybrid query: {e}")
         return jsonify({"error": "Failed to process query"}), 500
+
+
+@app.route("/api/logs/failed", methods=["GET"])
+def api_failed_queries():
+    """Retrieve recent failed or zero-result queries."""
+    limit = int(request.args.get("limit", 50))
+    days = int(request.args.get("days", 7))
+    logs = fetch_failed_queries(limit=limit, days=days)
+    return jsonify({"failed_queries": logs, "count": len(logs)}), 200
+
+
+@app.route("/api/logs/summary", methods=["GET"])
+def api_logs_summary():
+    """Retrieve aggregate statistics of query health."""
+    days = int(request.args.get("days", 7))
+    summary = get_query_health_summary(days=days)
+    return jsonify(summary), 200
+
 
 
 # ---------------------------------------------------------------------------

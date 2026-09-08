@@ -44,7 +44,7 @@ def backfill_elevation():
                 if act_id:
                     update_data.append((elev, act_id))
 
-            print(f">> Updating elevation_gain for {len(update_data)} activities in Supabase...")
+            print(f">> Updating elevation_gain for {len(update_data)} activities in database...")
             update_sql = "UPDATE activities SET elevation_gain = %s WHERE activity_id = %s;"
             execute_batch(cur, update_sql, update_data, page_size=200)
             conn.commit()

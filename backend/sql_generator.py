@@ -147,8 +147,25 @@ def generate_sql_query(user_question):
     ORDER BY total_activities DESC 
     LIMIT 1;
     
+    ### Example 5: Last N rides or activities
+    User Question: "What were my last 5 rides?"
+    SQL Query:
+    SELECT activity_id, activity_type, distance, duration, elevation_gain, timestamp 
+    FROM activities 
+    WHERE activity_type = 'Ride' 
+    ORDER BY timestamp DESC 
+    LIMIT 5;
+
+    ### Example 6: Last N activities across all sports
+    User Question: "Show my last 10 activities"
+    SQL Query:
+    SELECT activity_id, activity_type, distance, duration, elevation_gain, timestamp 
+    FROM activities 
+    ORDER BY timestamp DESC 
+    LIMIT 10;
+    
     Now, generate the SQL query based on the following user question:
-    User Question: {{user_question}}
+    User Question: {user_question}
     SQL Query:
     """
     

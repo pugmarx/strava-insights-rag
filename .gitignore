@@ -17,5 +17,8 @@ token.json
 # Ignore sensitive files/local cache
 activities.json
 strava.properties
+logs/
+*.jsonl
 
 .DS_Store
+

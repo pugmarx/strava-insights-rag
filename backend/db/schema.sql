@@ -11,12 +11,14 @@ CREATE TABLE IF NOT EXISTS activities (
     distance FLOAT,
     duration INT,
     elevation_gain FLOAT DEFAULT 0,  -- Total elevation gain in meters
+    elapsed_time INT,                -- Total wall-clock elapsed time in seconds
     timestamp TIMESTAMP,
     embedding vector(384)  -- Vector storage for embeddings
 );
 
 -- Migration for existing databases
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS elevation_gain FLOAT DEFAULT 0;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS elapsed_time INT;
 
 -- Create table to persist Strava OAuth tokens across container restarts
 CREATE TABLE IF NOT EXISTS strava_tokens (

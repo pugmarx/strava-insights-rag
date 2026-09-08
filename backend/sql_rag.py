@@ -341,7 +341,8 @@ def retrieve_similar_activities(user_query, top_k=5):
         base_select = """
             SELECT activity_id, activity_type, distance, duration, timestamp,
                    COALESCE(elevation_gain, 0) as elevation_gain,
-                   1 - (embedding <=> %s::vector) as similarity_score
+                   1 - (embedding <=> %s::vector) as similarity_score,
+                   COALESCE(elapsed_time, duration) as elapsed_time
             FROM activities
         """
         
@@ -422,14 +423,17 @@ def retrieve_similar_activities(user_query, top_k=5):
         # Convert to list of dictionaries
         activities = []
         for row in results:
-            if len(row) >= 7:
+            if len(row) >= 8:
+                act_id, act_type, dist, dur, ts, elev, score, elap = row[:8]
+            elif len(row) == 7:
                 act_id, act_type, dist, dur, ts, elev, score = row[:7]
+                elap = dur
             elif len(row) == 6:
                 act_id, act_type, dist, dur, ts, score = row
-                elev = 0.0
+                elev, elap = 0.0, dur
             else:
                 act_id, act_type, dist, dur, ts = row[:5]
-                elev, score = 0.0, 1.0
+                elev, score, elap = 0.0, 1.0, dur
 
             activities.append({
                 'activity_id': act_id,
@@ -438,6 +442,7 @@ def retrieve_similar_activities(user_query, top_k=5):
                 'duration': dur,
                 'timestamp': ts,
                 'elevation_gain': elev or 0.0,
+                'elapsed_time': elap or dur,
                 'similarity_score': score
             })
         
@@ -478,7 +483,7 @@ def build_context(retrieved_activities):
         else:
             distance_str = "N/A"
         
-        # Format duration
+        # Format duration (active moving time)
         duration_sec = activity.get('duration', 0)
         hours = duration_sec // 3600
         minutes = (duration_sec % 3600) // 60
@@ -487,12 +492,21 @@ def build_context(retrieved_activities):
             duration_str = f"{hours}h {minutes}m {seconds}s"
         else:
             duration_str = f"{minutes}m {seconds}s"
+
+        # Format elapsed time if paused/stopped time exists
+        elapsed_sec = activity.get('elapsed_time')
+        if elapsed_sec and elapsed_sec > (duration_sec + 60):
+            el_h = elapsed_sec // 3600
+            el_m = (elapsed_sec % 3600) // 60
+            el_s = elapsed_sec % 60
+            el_str = f"{el_h}h {el_m}m {el_s}s" if el_h > 0 else f"{el_m}m {el_s}s"
+            duration_str += f" (Elapsed: {el_str})"
         
         # Format elevation gain
         elevation_meters = activity.get('elevation_gain', 0)
         elev_str = f", Elevation Gain: {elevation_meters:.0f}m" if elevation_meters and elevation_meters > 0 else ""
         
-        # Calculate pace for running
+        # Calculate pace for running (based on moving time)
         pace_str = ""
         if activity['activity_type'] in ['Run', 'TrailRun', 'VirtualRun'] and distance_meters and distance_meters > 0:
             pace_sec_per_km = duration_sec / (distance_meters / 1000)
@@ -500,7 +514,7 @@ def build_context(retrieved_activities):
             pace_sec = int(pace_sec_per_km % 60)
             pace_str = f", Pace: {pace_min}:{pace_sec:02d}/km"
         
-        # Calculate speed for cycling
+        # Calculate speed for cycling (based on moving time)
         speed_str = ""
         if activity['activity_type'] in ['Ride', 'VirtualRide', 'EBikeRide', 'GravelRide', 'MountainBikeRide'] and distance_meters and duration_sec > 0:
             speed_kmh = (distance_meters / 1000) / (duration_sec / 3600)

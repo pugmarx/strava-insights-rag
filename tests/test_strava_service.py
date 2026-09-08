@@ -38,15 +38,16 @@ class TestStravaService(unittest.TestCase):
         self.assertEqual(dt.minute, 30)
 
     def test_format_activity_text(self):
-        """Test format of activity text for embedding."""
+        """Test format of activity text for embedding with moving_time."""
         activity = {
             "name": "Morning Tempo Run",
             "type": "Run",
             "distance": 8500.0,
+            "moving_time": 2100,
             "elapsed_time": 2400
         }
         text = strava_service.format_activity_text(activity)
-        self.assertEqual(text, "Morning Tempo Run Run 8500.0 meters in 2400 seconds")
+        self.assertEqual(text, "Morning Tempo Run Run 8500.0 meters in 2100 seconds")
 
     @patch('strava_service.get_db_connection')
     @patch('strava_service.compute_embedding')

@@ -41,6 +41,7 @@ def _init_db_schema():
         try:
             with conn.cursor() as cur:
                 cur.execute("ALTER TABLE activities ADD COLUMN IF NOT EXISTS elevation_gain FLOAT DEFAULT 0;")
+                cur.execute("ALTER TABLE activities ADD COLUMN IF NOT EXISTS elapsed_time INT;")
                 cur.execute("""
                     ALTER TABLE IF EXISTS activities ENABLE ROW LEVEL SECURITY;
                     ALTER TABLE IF EXISTS strava_tokens ENABLE ROW LEVEL SECURITY;
@@ -48,7 +49,7 @@ def _init_db_schema():
                     ALTER TABLE IF EXISTS query_logs ENABLE ROW LEVEL SECURITY;
                 """)
                 conn.commit()
-                print("[DB] Schema verified: elevation_gain active & RLS enabled across tables.")
+                print("[DB] Schema verified: elevation_gain & elapsed_time active, RLS enabled across tables.")
         except Exception as e:
             print(f"[DB] Schema migration check note: {e}")
         finally:

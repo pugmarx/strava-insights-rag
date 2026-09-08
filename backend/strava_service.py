@@ -25,14 +25,15 @@ def parse_strava_timestamp(iso_date_str):
 
 
 def format_activity_text(activity):
-    """Generate textual summary for embedding creation."""
+    """Generate textual summary for embedding creation using active moving time."""
     name = activity.get("name", "Activity")
     act_type = activity.get("type", "Workout")
     distance = activity.get("distance", 0)
-    elapsed_time = activity.get("elapsed_time", 0)
+    # Prefer moving_time for active workout effort representation
+    moving_time = activity.get("moving_time") or activity.get("elapsed_time", 0)
     elevation = activity.get("total_elevation_gain", 0)
     elev_str = f" with {elevation:.0f}m elevation gain" if elevation and elevation > 0 else ""
-    return f"{name} {act_type} {distance} meters{elev_str} in {elapsed_time} seconds"
+    return f"{name} {act_type} {distance} meters{elev_str} in {moving_time} seconds"
 
 
 def fetch_activity_from_strava(activity_id):
@@ -49,7 +50,7 @@ def fetch_activity_from_strava(activity_id):
 
 
 def save_activity_to_db(activity_data):
-    """Generate embedding with fastembed and upsert activity into PostgreSQL."""
+    """Generate embedding with fastembed and upsert activity into PostgreSQL with moving_time."""
     conn = get_db_connection()
     if not conn:
         raise ConnectionError("Could not connect to database to save activity")
@@ -60,17 +61,22 @@ def save_activity_to_db(activity_data):
     user_id = str(activity_data.get("athlete", {}).get("id") or ATHLETE_ID or "user")
     elevation_gain = float(activity_data.get("total_elevation_gain") or 0.0)
 
+    # Active moving duration (matches Strava UI speed & pace)
+    moving_duration = int(activity_data.get("moving_time") or activity_data.get("elapsed_time") or 0)
+    total_elapsed = int(activity_data.get("elapsed_time") or moving_duration)
+
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO activities (activity_id, user_id, activity_type, distance, duration, elevation_gain, timestamp, embedding)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO activities (activity_id, user_id, activity_type, distance, duration, elevation_gain, elapsed_time, timestamp, embedding)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (activity_id) DO UPDATE SET
                     user_id = EXCLUDED.user_id,
                     activity_type = EXCLUDED.activity_type,
                     distance = EXCLUDED.distance,
                     duration = EXCLUDED.duration,
                     elevation_gain = EXCLUDED.elevation_gain,
+                    elapsed_time = EXCLUDED.elapsed_time,
                     timestamp = EXCLUDED.timestamp,
                     embedding = EXCLUDED.embedding
             """, (
@@ -78,8 +84,9 @@ def save_activity_to_db(activity_data):
                 user_id,
                 activity_data.get("type", "Workout"),
                 activity_data.get("distance", 0.0),
-                activity_data.get("elapsed_time", 0),
+                moving_duration,
                 elevation_gain,
+                total_elapsed,
                 timestamp,
                 embedding
             ))

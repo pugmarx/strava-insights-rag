@@ -125,5 +125,45 @@ class TestSqlRag(unittest.TestCase):
         self.assertEqual(chart_data['elevations'], [45.0, 120.0])
         self.assertEqual(chart_data['points'][0]['pace'], "5:00/km")
 
+    def test_build_context_with_exact_aggregates(self):
+        """Test build_context formatting when exact database aggregates are provided."""
+        exact = {
+            "count": 42,
+            "total_distance_km": 1850.5,
+            "total_duration_sec": 216000,  # 60h 0m
+            "total_elevation_m": 24500.0,
+            "max_distance_km": 105.2,
+            "avg_distance_km": 44.06,
+            "avg_duration_sec": 5142
+        }
+        context = sql_rag.build_context([], exact_aggregates=exact)
+        self.assertIn("EXACT DATABASE TOTALS", context)
+        self.assertIn("Total Activities Logged: 42", context)
+        self.assertIn("Total Distance: 1850.50 km", context)
+        self.assertIn("Total Moving Time: 60h 0m", context)
+        self.assertIn("Total Elevation Gain: 24500 m", context)
+        self.assertIn("Longest Single Activity: 105.20 km", context)
+
+    @patch('sql_rag.connect_db')
+    def test_execute_exact_aggregation_sql(self, mock_connect):
+        """Test SQL aggregation query execution and dictionary parsing."""
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+
+        # COUNT, SUM(distance), SUM(duration), SUM(elevation_gain), MAX(distance), AVG(distance), AVG(duration)
+        mock_cursor.fetchone.return_value = (15, 600000.0, 72000, 8500.0, 65000.0, 40000.0, 4800)
+
+        result = sql_rag.execute_exact_aggregation(matched_types=['Ride'], time_filters=["EXTRACT(YEAR FROM timestamp) = 2023"])
+        self.assertIsNotNone(result)
+        self.assertEqual(result["count"], 15)
+        self.assertEqual(result["total_distance_km"], 600.0)
+        self.assertEqual(result["total_duration_sec"], 72000)
+        self.assertEqual(result["total_elevation_m"], 8500.0)
+        self.assertEqual(result["max_distance_km"], 65.0)
+        self.assertEqual(result["avg_distance_km"], 40.0)
+
+
 if __name__ == '__main__':
     unittest.main()

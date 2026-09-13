@@ -71,5 +71,74 @@ class TestCacheManager(unittest.TestCase):
             self.assertIsNone(cache_manager.get_semantic_cache(query, dummy_vector, query_type="rag"))
             self.assertIsNone(cache_manager.get_cached_analytics("all"))
 
+    def test_extract_query_entities(self):
+        """Test comprehensive entity extraction across sports, years, months, metrics, and limits."""
+        e1 = cache_manager.extract_query_entities("how much did i ride in 2023")
+        self.assertEqual(e1["sport_type"], "Ride")
+        self.assertEqual(e1["target_year"], 2023)
+        self.assertEqual(e1["metric_intent"], "aggregation")
+        self.assertTrue(e1["is_historical"])
+
+        e2 = cache_manager.extract_query_entities("how much did i ride in 2022")
+        self.assertEqual(e2["sport_type"], "Ride")
+        self.assertEqual(e2["target_year"], 2022)
+        self.assertEqual(e2["metric_intent"], "aggregation")
+
+        e3 = cache_manager.extract_query_entities("last 5 rides")
+        self.assertEqual(e3["sport_type"], "Ride")
+        self.assertEqual(e3["item_limit"], 5)
+        self.assertEqual(e3["time_scope"], "relative")
+
+        e4 = cache_manager.extract_query_entities("last 10 rides")
+        self.assertEqual(e4["sport_type"], "Ride")
+        self.assertEqual(e4["item_limit"], 10)
+
+        e5 = cache_manager.extract_query_entities("fastest bike ride")
+        self.assertEqual(e5["sport_type"], "Ride")
+        self.assertEqual(e5["metric_intent"], "speed")
+        self.assertEqual(e5["superlative_dir"], "max")
+
+        e6 = cache_manager.extract_query_entities("slowest run")
+        self.assertEqual(e6["sport_type"], "Run")
+        self.assertEqual(e6["metric_intent"], "speed")
+        self.assertEqual(e6["superlative_dir"], "min")
+
+    def test_no_cross_year_cache_collision(self):
+        """Ensure 2023 and 2022 queries do NOT collide in cache."""
+        dummy_vector = [0.1] * 384
+        q2023 = "how much did i ride in 2023"
+        q2022 = "how much did i ride in 2022"
+
+        with patch('cache_manager.get_db_conn', return_value=None):
+            cache_manager.set_semantic_cache(q2023, dummy_vector, "2023 Stats: 3000km", query_type="rag")
+            cached_2023 = cache_manager.get_semantic_cache(q2023, dummy_vector, query_type="rag")
+            cached_2022 = cache_manager.get_semantic_cache(q2022, dummy_vector, query_type="rag")
+
+            self.assertEqual(cached_2023, "2023 Stats: 3000km")
+            self.assertIsNone(cached_2022, "2022 query must not collide with 2023 cache entry")
+
+    def test_no_cross_limit_cache_collision(self):
+        """Ensure 'last 5' and 'last 10' queries do NOT collide in cache."""
+        dummy_vector = [0.1] * 384
+        q5 = "last 5 rides"
+        q10 = "last 10 rides"
+
+        with patch('cache_manager.get_db_conn', return_value=None):
+            cache_manager.set_semantic_cache(q5, dummy_vector, "5 rides list", query_type="rag")
+            self.assertEqual(cache_manager.get_semantic_cache(q5, dummy_vector, query_type="rag"), "5 rides list")
+            self.assertIsNone(cache_manager.get_semantic_cache(q10, dummy_vector, query_type="rag"))
+
+    def test_no_cross_sport_cache_collision(self):
+        """Ensure 'longest run' and 'longest ride' do NOT collide in cache."""
+        dummy_vector = [0.1] * 384
+        q_run = "longest run"
+        q_ride = "longest ride"
+
+        with patch('cache_manager.get_db_conn', return_value=None):
+            cache_manager.set_semantic_cache(q_run, dummy_vector, "Longest Run: 21km", query_type="rag")
+            self.assertEqual(cache_manager.get_semantic_cache(q_run, dummy_vector, query_type="rag"), "Longest Run: 21km")
+            self.assertIsNone(cache_manager.get_semantic_cache(q_ride, dummy_vector, query_type="rag"))
+
+
 if __name__ == '__main__':
     unittest.main()

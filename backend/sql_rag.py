@@ -6,7 +6,7 @@ from datetime import datetime
 from fastembed import TextEmbedding
 from db_pool import get_pool
 from llm_client import LLMClient
-from cache_manager import get_cached_embedding, set_cached_embedding, get_semantic_cache, set_semantic_cache
+from cache_manager import get_cached_embedding, set_cached_embedding, get_semantic_cache, set_semantic_cache, extract_query_entities
 
 # Load environment variables
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -464,15 +464,106 @@ def retrieve_similar_activities(user_query, top_k=5):
         conn.close()
 
 
-def build_context(retrieved_activities):
+def execute_exact_aggregation(matched_types=None, time_filters=None):
     """
-    Build context string from retrieved activities for LLM with calculated metrics.
+    Execute direct database aggregation across all activities matching sport types and time filters.
+    Returns aggregate summary dictionary if query succeeds.
     """
-    if not retrieved_activities:
+    conn = connect_db()
+    if not conn:
+        return None
+    
+    cursor = conn.cursor()
+    try:
+        where_conditions = []
+        if matched_types:
+            types_str = ", ".join(f"'{t}'" for t in set(matched_types))
+            where_conditions.append(f"activity_type IN ({types_str})")
+        if time_filters:
+            where_conditions.extend(time_filters)
+        
+        where_clause = (" WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
+        
+        sql = f"""
+            SELECT COUNT(*),
+                   COALESCE(SUM(distance), 0),
+                   COALESCE(SUM(duration), 0),
+                   COALESCE(SUM(elevation_gain), 0),
+                   COALESCE(MAX(distance), 0),
+                   COALESCE(AVG(distance), 0),
+                   COALESCE(AVG(duration), 0)
+            FROM activities
+            {where_clause}
+        """
+        cursor.execute(sql)
+        row = cursor.fetchone()
+        if row and row[0] > 0:
+            count, total_dist, total_dur, total_elev, max_dist, avg_dist, avg_dur = row
+            return {
+                "count": count,
+                "total_distance_km": round(total_dist / 1000.0, 2),
+                "total_duration_sec": total_dur,
+                "total_elevation_m": round(float(total_elev or 0), 1),
+                "max_distance_km": round(max_dist / 1000.0, 2),
+                "avg_distance_km": round(avg_dist / 1000.0, 2),
+                "avg_duration_sec": int(avg_dur)
+            }
+        elif row and row[0] == 0:
+            return {
+                "count": 0,
+                "total_distance_km": 0.0,
+                "total_duration_sec": 0,
+                "total_elevation_m": 0.0,
+                "max_distance_km": 0.0,
+                "avg_distance_km": 0.0,
+                "avg_duration_sec": 0
+            }
+    except Exception as e:
+        print(f"Error executing exact aggregation: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+    return None
+
+
+def build_context(retrieved_activities, exact_aggregates=None):
+    """
+    Build context string from retrieved activities for LLM with calculated metrics and exact database totals.
+    """
+    if not retrieved_activities and not exact_aggregates:
         return "No activities found."
     
     context_lines = []
-    for i, activity in enumerate(retrieved_activities, 1):
+    
+    # Inject exact database totals if available
+    if exact_aggregates and exact_aggregates.get("count", 0) > 0:
+        dur_sec = exact_aggregates["total_duration_sec"]
+        h = dur_sec // 3600
+        m = (dur_sec % 3600) // 60
+        dur_str = f"{h}h {m}m" if h > 0 else f"{m}m"
+
+        avg_dur_sec = exact_aggregates.get("avg_duration_sec", 0)
+        avg_h = avg_dur_sec // 3600
+        avg_m = (avg_dur_sec % 3600) // 60
+        avg_dur_str = f"{avg_h}h {avg_m}m" if avg_h > 0 else f"{avg_m}m"
+
+        context_lines.extend([
+            "=== EXACT DATABASE TOTALS (Calculated across ALL matching activities) ===",
+            f"- Total Activities Logged: {exact_aggregates['count']}",
+            f"- Total Distance: {exact_aggregates['total_distance_km']:.2f} km",
+            f"- Total Moving Time: {dur_str}",
+            f"- Total Elevation Gain: {exact_aggregates['total_elevation_m']:.0f} m",
+            f"- Longest Single Activity: {exact_aggregates['max_distance_km']:.2f} km",
+            f"- Average Distance per Activity: {exact_aggregates['avg_distance_km']:.2f} km",
+            f"- Average Duration per Activity: {avg_dur_str}",
+            "=========================================================================",
+            "",
+            "Individual Activity Highlights & Exemplars:"
+        ])
+    elif exact_aggregates and exact_aggregates.get("count", 0) == 0:
+        return "No matching activities found in database for the requested criteria."
+
+    for i, activity in enumerate(retrieved_activities or [], 1):
         # Format timestamp
         if isinstance(activity['timestamp'], str):
             timestamp = datetime.fromisoformat(activity['timestamp'])
@@ -634,16 +725,18 @@ Response:"""
     
     return llm_client.generate(prompt)
 
-def handle_rag_query(user_query, debug=False, return_chart_data=False):
+def handle_rag_query(user_query, debug=False, return_chart_data=False, query_type="rag"):
     """
-    Simple RAG pipeline: Retrieve → Augment → Generate (with Semantic Caching)
+    RAG pipeline: Entity Extraction → Semantic Cache Check → Exact Aggregation / Retrieval → Augment → Generate
     """
     if debug:
         print(f"\n> DEBUG: Processing query: {user_query}")
     
-    # Check Semantic Vector Cache first
+    entities = extract_query_entities(user_query)
     query_vec = compute_embedding(user_query)
-    cached_payload = get_semantic_cache(user_query, query_vec, query_type="rag")
+    
+    # Check Semantic Vector Cache first with full entity constraints
+    cached_payload = get_semantic_cache(user_query, query_vec, query_type=query_type, entities=entities)
     if cached_payload:
         if debug:
             print("> DEBUG: Returning cached response from Semantic Cache.")
@@ -657,18 +750,46 @@ def handle_rag_query(user_query, debug=False, return_chart_data=False):
             return cached_resp, cached_chart
         return cached_resp
 
-    # Step 1: Simple vector similarity retrieval
+    # Check if this is an aggregation query needing exact SQL totals
+    is_aggregation = entities.get("metric_intent") == "aggregation" or any(
+        k in user_query.lower() for k in [
+            'total', 'average', 'avg', 'count', 'sum', 'how much', 'how far',
+            'how many', 'how long', 'overall distance', 'volume', 'stats', 'annual summary'
+        ]
+    )
+
+    exact_aggregates = None
+    if is_aggregation:
+        matched_types = []
+        sport = entities.get("sport_type")
+        if sport == "Ride":
+            matched_types.extend(['Ride', 'VirtualRide', 'EBikeRide', 'GravelRide', 'MountainBikeRide'])
+        elif sport == "Run":
+            matched_types.extend(['Run', 'TrailRun', 'VirtualRun'])
+        elif sport == "Hike":
+            matched_types.extend(['Hike', 'Walk'])
+        elif sport == "Swim":
+            matched_types.extend(['Swim'])
+        elif sport == "Workout":
+            matched_types.extend(['WeightTraining', 'Workout'])
+
+        time_filters = extract_time_filters(user_query)
+        exact_aggregates = execute_exact_aggregation(matched_types, time_filters)
+        if debug and exact_aggregates:
+            print(f"> DEBUG: Calculated exact aggregation: {exact_aggregates}")
+
+    # Step 1: Vector & metadata retrieval
     if debug:
         print("> DEBUG: Retrieving similar activities...")
     retrieved_activities = retrieve_similar_activities(user_query, top_k=15)
     
-    if not retrieved_activities:
+    if not retrieved_activities and not exact_aggregates:
         no_res = "I couldn't find any relevant activities to answer your question."
         if return_chart_data:
             return no_res, None
         return no_res
     
-    if debug:
+    if debug and retrieved_activities:
         print(f"> DEBUG: Retrieved {len(retrieved_activities)} activities")
         for i, activity in enumerate(retrieved_activities[:5], 1):
             distance_km = (activity.get('distance') or 0) / 1000.0
@@ -677,10 +798,10 @@ def handle_rag_query(user_query, debug=False, return_chart_data=False):
                 timestamp = datetime.fromisoformat(timestamp)
             print(f"   {i}. {activity['activity_type']}: {distance_km:.1f}km on {timestamp.strftime('%Y-%m-%d')} (similarity: {activity.get('similarity_score', 0):.3f})")
     
-    # Step 2: Build context from retrieved activities
+    # Step 2: Build context from retrieved activities & exact database totals
     if debug:
         print("> DEBUG: Building context...")
-    context = build_context(retrieved_activities)
+    context = build_context(retrieved_activities, exact_aggregates=exact_aggregates)
     chart_data = extract_chart_data_from_activities(retrieved_activities)
     
     # Step 3: Generate response using LLM with context
@@ -688,66 +809,22 @@ def handle_rag_query(user_query, debug=False, return_chart_data=False):
         print("> DEBUG: Generating response...")
     response = generate_rag_response(user_query, context)
     
-    # Store into Semantic Cache for future hits
+    # Store into Semantic Cache with full entity metadata
     if response:
         payload = {"response": response, "chart_data": chart_data}
-        set_semantic_cache(user_query, query_vec, payload, query_type="rag")
+        set_semantic_cache(user_query, query_vec, payload, query_type=query_type, entities=entities)
 
     if return_chart_data:
         return response, chart_data
     return response
 
-# Alternative: Hybrid approach (RAG + some SQL when needed)
+
 def hybrid_query_handler(user_query, return_chart_data=False):
     """
-    Hybrid approach: Use RAG for most queries, but fall back to SQL for specific aggregations.
+    Hybrid approach: Use exact SQL aggregation when query asks for totals/statistics/averages,
+    and vector RAG for descriptive/qualitative queries.
     """
-    # Check Semantic Vector Cache first
-    query_vec = compute_embedding(user_query)
-    cached_payload = get_semantic_cache(user_query, query_vec, query_type="hybrid")
-    if cached_payload:
-        if isinstance(cached_payload, dict):
-            cached_resp = cached_payload.get("response", "")
-            cached_chart = cached_payload.get("chart_data")
-        else:
-            cached_resp = cached_payload
-            cached_chart = None
-        if return_chart_data:
-            return cached_resp, cached_chart
-        return cached_resp
-
-    # Keywords that suggest aggregation queries that might need SQL
-    sql_keywords = ['total', 'average', 'count', 'sum', 'most', 'least', 'fastest', 'slowest']
-    
-    if any(keyword in user_query.lower() for keyword in sql_keywords):
-        if os.getenv("DEBUG", "false").lower() in ("true", "1"):
-            print("Detected aggregation query, using hybrid approach...")
-        
-        # Get relevant activities via vector search
-        retrieved_activities = retrieve_similar_activities(user_query, top_k=10)
-        context = build_context(retrieved_activities)
-        chart_data = extract_chart_data_from_activities(retrieved_activities)
-        
-        # Generate response that might include summary statistics
-        enhanced_prompt = f"""Based on the retrieved activities and the user's question, provide a comprehensive response. If the question asks for totals, averages, or statistics, calculate them from the provided data.
-
-Retrieved Activities:
-{context}
-
-User Question: {user_query}
-
-Provide a helpful response with calculations if needed:"""
-        
-        response = generate_rag_response(user_query, enhanced_prompt)
-        if response:
-            payload = {"response": response, "chart_data": chart_data}
-            set_semantic_cache(user_query, query_vec, payload, query_type="hybrid")
-        if return_chart_data:
-            return response, chart_data
-        return response
-    else:
-        # Use standard RAG for descriptive queries
-        return handle_rag_query(user_query, return_chart_data=return_chart_data)
+    return handle_rag_query(user_query, return_chart_data=return_chart_data, query_type="hybrid")
 
 def debug_all_activities():
     """

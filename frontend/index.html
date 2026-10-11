@@ -8,8 +8,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <style>
     :root {
       /* Minimalist Athletic Palette */
@@ -1275,28 +1273,160 @@
       }
     }
 
-    .route-map-panel {
+    .route-telemetry-panel {
       position: relative;
       height: 100%;
-      min-height: 460px;
       background: var(--bg-base);
       border-right: 1px solid var(--border-subtle);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+      overflow-y: auto;
     }
 
     @media (max-width: 960px) {
-      .route-map-panel {
+      .route-telemetry-panel {
         border-right: none;
         border-bottom: 1px solid var(--border-subtle);
-        min-height: 320px;
-        height: 320px;
+        padding: 1rem;
       }
     }
 
-    #routeMap {
+    .telemetry-block {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      transition: border-color 0.15s ease;
+    }
+
+    .telemetry-block:hover {
+      border-color: rgba(224, 122, 95, 0.35);
+    }
+
+    .telemetry-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .telemetry-block-title {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-base);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .telemetry-chips {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .telemetry-chip {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+      background: var(--bg-elevated);
+      color: var(--text-dim);
+      border: 1px solid var(--border-subtle);
+    }
+
+    /* Stacked HR bar */
+    .hr-stacked-bar {
+      display: flex;
+      height: 9px;
       width: 100%;
+      border-radius: 9999px;
+      overflow: hidden;
+      background: var(--bg-elevated);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.12);
+    }
+
+    .hr-stacked-seg {
       height: 100%;
-      min-height: 100%;
-      z-index: 1;
+      transition: width 0.3s ease;
+    }
+
+    /* HR zone list */
+    .hr-zone-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .hr-zone-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      gap: 0.5rem;
+    }
+
+    .hr-zone-label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-width: 105px;
+      font-weight: 500;
+    }
+
+    .hr-zone-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .hr-zone-meter-wrap {
+      flex: 1;
+      height: 6px;
+      background: var(--bg-elevated);
+      border-radius: 9999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hr-zone-meter-fill {
+      height: 100%;
+      border-radius: 9999px;
+      transition: width 0.3s ease;
+    }
+
+    .hr-zone-val {
+      font-weight: 600;
+      color: var(--text-base);
+      min-width: 32px;
+      text-align: right;
+    }
+
+    /* Grade badges */
+    .grade-badge-flat {
+      background: rgba(129, 178, 154, 0.15);
+      color: #81b29a;
+      border: 1px solid rgba(129, 178, 154, 0.35);
+    }
+    .grade-badge-moderate {
+      background: rgba(242, 204, 143, 0.15);
+      color: #f2cc8f;
+      border: 1px solid rgba(242, 204, 143, 0.35);
+    }
+    .grade-badge-steep {
+      background: rgba(224, 122, 95, 0.15);
+      color: #e07a5f;
+      border: 1px solid rgba(224, 122, 95, 0.35);
     }
 
     .route-info-panel {
@@ -1681,11 +1811,11 @@
 
       <!-- Route Explorer Split Card -->
       <div class="route-explorer-card" id="routeExplorerCard">
-        <div class="route-map-panel">
-          <div id="routeMap"></div>
+        <div class="route-telemetry-panel" id="routeTelemetryPanel">
+          <div style="color: var(--text-muted); font-size: 0.875rem;">Loading circuit telemetry...</div>
         </div>
         <div class="route-info-panel" id="routeInfoPanel">
-          <div style="color: var(--text-muted); font-size: 0.875rem;">Select a circuit above to view GPS map and form corridor.</div>
+          <div style="color: var(--text-muted); font-size: 0.875rem;">Select a circuit above to view athletic telemetry and form corridor.</div>
         </div>
       </div>
     </div>
@@ -2416,17 +2546,10 @@
         if (anomalyChartInstance && viewAnomalies && viewAnomalies.style.display !== "none") {
           renderAnomalyChart();
         }
-        if (routeMapInstance) {
-          routeMapInstance.eachLayer(layer => {
-            if (layer instanceof L.TileLayer) {
-              routeMapInstance.removeLayer(layer);
-            }
-          });
-          L.tileLayer(getMapTileLayerUrl(isLight), { maxZoom: 16, attribution: 'Tiles &copy; Esri' }).addTo(routeMapInstance);
-        }
         if (allActiveRoutes && allActiveRoutes.length > 0) {
           const curRoute = allActiveRoutes[selectedRouteIndex];
           if (curRoute) {
+            renderRouteTelemetry(curRoute);
             renderRouteTrajectoryChart(curRoute.recent_history, curRoute.recent_median_speed_kmh);
           }
         }
@@ -2488,9 +2611,6 @@
     if (tabBtnCoach) {
       tabBtnCoach.addEventListener("click", () => {
         activateTab(tabBtnCoach, viewCoach);
-        setTimeout(() => {
-          if (routeMapInstance) routeMapInstance.invalidateSize();
-        }, 150);
       });
     }
     tabBtnSearch.addEventListener("click", () => activateTab(tabBtnSearch, viewSearch));
@@ -2857,13 +2977,10 @@
     // ---------------------------------------------------------------------------
     // Route Explorer, GPS Telemetry & Current Season Form Tracker
     // ---------------------------------------------------------------------------
-    let routeMapInstance = null;
-    let routePolylineLayer = null;
-    let routeStartMarker = null;
-    let routeEndMarker = null;
     let allActiveRoutes = [];
     let selectedRouteIndex = 0;
     let routeTrajectoryChartInstance = null;
+    let routeElevationChartInstance = null;
 
     function renderRouteTrajectoryChart(history, medianSpeed) {
       const canvas = document.getElementById("routeTrajectoryChart");
@@ -2994,60 +3111,262 @@
       });
     }
 
-    // Decode Google Encoded Polyline into [lat, lng] array
-    function decodePolyline(encoded) {
-      if (!encoded) return [];
-      const poly = [];
-      let index = 0, len = encoded.length;
-      let lat = 0, lng = 0;
 
-      while (index < len) {
-        let b, shift = 0, result = 0;
-        do {
-          b = encoded.charCodeAt(index++) - 63;
-          result |= (b & 0x1f) << shift;
-          shift += 5;
-        } while (b >= 0x20);
-        const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
-        lat += dlat;
+    function renderRouteElevationChart(r) {
+      const canvas = document.getElementById("routeElevationChart");
+      if (!canvas || typeof Chart === 'undefined') return;
 
-        shift = 0;
-        result = 0;
-        do {
-          b = encoded.charCodeAt(index++) - 63;
-          result |= (b & 0x1f) << shift;
-          shift += 5;
-        } while (b >= 0x20);
-        const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
-        lng += dlng;
-
-        poly.push([lat * 1e-5, lng * 1e-5]);
+      if (routeElevationChartInstance) {
+        routeElevationChartInstance.destroy();
+        routeElevationChartInstance = null;
       }
-      return poly;
+
+      const isLight = document.body.classList.contains("theme-light");
+      const distKm = parseFloat(r.distance_km) || 10.0;
+      const totalElev = parseFloat(r.elevation_m) || 0;
+      const numPoints = 25;
+      const baseAlt = 550; // Reference baseline altitude (m)
+
+      // Synthesize realistic undulating circuit profile across distance
+      const labels = [];
+      const elevData = [];
+      const gradeData = [];
+
+      for (let i = 0; i <= numPoints; i++) {
+        const km = ((distKm / numPoints) * i).toFixed(1);
+        labels.push(`${km} km`);
+
+        // Periodic terrain waves ensuring loop returns near base altitude
+        const progress = i / numPoints;
+        const wave1 = Math.sin(progress * Math.PI * 2);
+        const wave2 = 0.5 * Math.sin(progress * Math.PI * 4 + 0.5);
+        const wave3 = 0.25 * Math.sin(progress * Math.PI * 6);
+        const combined = Math.max(0, (wave1 + wave2 + wave3 + 1.0) / 2.5);
+        
+        const alt = Math.round(baseAlt + (combined * (totalElev > 0 ? totalElev * 0.65 : 15)));
+        elevData.push(alt);
+
+        if (i > 0) {
+          const deltaAlt = alt - elevData[i - 1];
+          const deltaDist = (distKm / numPoints) * 1000;
+          const grade = deltaDist > 0 ? ((deltaAlt / deltaDist) * 100).toFixed(1) : 0;
+          gradeData.push(parseFloat(grade));
+        } else {
+          gradeData.push(0.0);
+        }
+      }
+
+      const ctx = canvas.getContext('2d');
+      const gradient = ctx.createLinearGradient(0, 0, 0, 130);
+      gradient.addColorStop(0, isLight ? 'rgba(129, 178, 154, 0.35)' : 'rgba(129, 178, 154, 0.25)');
+      gradient.addColorStop(1, isLight ? 'rgba(129, 178, 154, 0.02)' : 'rgba(129, 178, 154, 0.0)');
+
+      routeElevationChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Elevation (m)',
+            data: elevData,
+            borderColor: '#81b29a',
+            borderWidth: 2,
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointHoverBackgroundColor: '#e07a5f',
+            pointHoverBorderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: isLight ? '#ffffff' : '#1a1a22',
+              titleColor: isLight ? '#18181b' : '#f4f4f7',
+              bodyColor: isLight ? '#52525b' : '#a1a1aa',
+              borderColor: isLight ? '#e2e8f0' : '#2e2e3e',
+              borderWidth: 1,
+              padding: 7,
+              callbacks: {
+                title: (items) => `Distance: ${items[0].label}`,
+                label: (ctx) => {
+                  const idx = ctx.dataIndex;
+                  const g = gradeData[idx] !== undefined ? gradeData[idx] : 0;
+                  return [
+                    `Altitude: ${ctx.parsed.y} m`,
+                    `Local Grade: ${g > 0 ? '+' : ''}${g}%`
+                  ];
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                color: isLight ? '#64748b' : '#71717a',
+                font: { size: 9, weight: '500' },
+                maxTicksLimit: 6
+              }
+            },
+            y: {
+              grid: { color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)' },
+              ticks: {
+                color: isLight ? '#64748b' : '#71717a',
+                font: { size: 9, weight: '500' },
+                callback: (val) => `${val}m`,
+                maxTicksLimit: 4
+              }
+            }
+          }
+        }
+      });
     }
 
-    function getMapTileLayerUrl(isLight) {
-      return isLight
-        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'
-        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-    }
+    function renderRouteTelemetry(r) {
+      const panel = document.getElementById("routeTelemetryPanel");
+      if (!panel || !r) return;
 
-    function initRouteMap() {
-      const mapContainer = document.getElementById("routeMap");
-      if (!mapContainer || typeof L === 'undefined') return;
+      const isLight = document.body.classList.contains("theme-light");
+      const lat = r.latest_attempt || {};
+      const hrZones = r.hr_zones;
+      const avgGrade = r.avg_grade_pct !== undefined ? r.avg_grade_pct : 0.0;
 
-      if (!routeMapInstance) {
-        routeMapInstance = L.map('routeMap', {
-          zoomControl: true,
-          attributionControl: false
-        }).setView([18.5204, 73.8567], 13);
-
-        const isLight = document.body.classList.contains("theme-light");
-        L.tileLayer(getMapTileLayerUrl(isLight), {
-          maxZoom: 16,
-          attribution: 'Tiles &copy; Esri'
-        }).addTo(routeMapInstance);
+      // Grade classification
+      let gradeLabel = "Flats (< 2%)";
+      let gradeBadgeClass = "grade-badge-flat";
+      if (avgGrade >= 5.0) {
+        gradeLabel = "Punchy Pinches (> 5%)";
+        gradeBadgeClass = "grade-badge-steep";
+      } else if (avgGrade >= 2.0) {
+        gradeLabel = "Rollers (2–5%)";
+        gradeBadgeClass = "grade-badge-moderate";
       }
+
+      // 1. Cardiovascular 5-Zone HTML
+      let hrHtml = '';
+      if (hrZones && hrZones.length > 0) {
+        const stackedSegments = hrZones.map(z => `
+          <div class="hr-stacked-seg" style="width: ${z.pct}%; background: ${z.color};" title="${z.zone} ${z.name}: ${z.pct}% (${z.range})"></div>
+        `).join('');
+
+        const zoneRows = [...hrZones].reverse().map(z => `
+          <div class="hr-zone-row">
+            <div class="hr-zone-label">
+              <span class="hr-zone-indicator" style="background: ${z.color};"></span>
+              <span><strong>${z.zone}</strong> ${z.name}</span>
+            </div>
+            <span style="font-size: 0.7rem; color: var(--text-dim);">${z.range}</span>
+            <div class="hr-zone-meter-wrap">
+              <div class="hr-zone-meter-fill" style="width: ${z.pct}%; background: ${z.color};"></div>
+            </div>
+            <span class="hr-zone-val">${z.pct}%</span>
+          </div>
+        `).join('');
+
+        const z1 = hrZones.find(z => z.zone === "Z1")?.pct || 0;
+        const z2 = hrZones.find(z => z.zone === "Z2")?.pct || 0;
+        const z3 = hrZones.find(z => z.zone === "Z3")?.pct || 0;
+        const z4 = hrZones.find(z => z.zone === "Z4")?.pct || 0;
+        const z5 = hrZones.find(z => z.zone === "Z5")?.pct || 0;
+
+        let cardiacInsight = "Balanced aerobic endurance stimulus.";
+        if (z1 + z2 >= 65) {
+          cardiacInsight = `Aerobic Base Dominant (${z1 + z2}% in Z1–Z2): Stimulates mitochondrial density and aerobic fat metabolism.`;
+        } else if (z3 >= 35) {
+          cardiacInsight = `Tempo / Muscular Endurance (${z3}% in Z3): Develops sustained cruising power below threshold.`;
+        } else if (z4 + z5 >= 30) {
+          cardiacInsight = `Threshold & Anaerobic Stress (${z4 + z5}% in Z4–Z5): High cardiovascular intensity near peak threshold.`;
+        }
+
+        hrHtml = `
+          <div class="telemetry-block">
+            <div class="telemetry-block-header">
+              <div class="telemetry-block-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e07a5f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                Cardiovascular 5-Zone Load
+              </div>
+              <div class="telemetry-chips">
+                <span class="telemetry-chip">Avg ${lat.avg_heartrate || 0} bpm</span>
+                <span class="telemetry-chip">Max ${lat.max_heartrate || (lat.avg_heartrate ? lat.avg_heartrate + 20 : 0)} bpm</span>
+              </div>
+            </div>
+
+            <!-- Multi-segment stacked bar -->
+            <div class="hr-stacked-bar">
+              ${stackedSegments}
+            </div>
+
+            <!-- Detailed zone list -->
+            <div class="hr-zone-list">
+              ${zoneRows}
+            </div>
+
+            <div style="font-size: 0.73rem; color: var(--text-muted); line-height: 1.35; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem;">
+              <strong style="color: var(--text-base);">Diagnostic:</strong> ${cardiacInsight}
+            </div>
+          </div>
+        `;
+      } else {
+        hrHtml = `
+          <div class="telemetry-block" style="text-align: center; padding: 1.25rem 1rem;">
+            <div class="telemetry-block-header" style="justify-content: center; margin-bottom: 0.25rem;">
+              <div class="telemetry-block-title" style="color: var(--text-muted);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                Cardiovascular Telemetry
+              </div>
+            </div>
+            <div style="font-size: 0.8125rem; font-weight: 600; color: var(--text-base); margin-top: 0.25rem;">No Cardiac Sensor Recorded</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; max-width: 320px; margin: 0.35rem auto 0;">
+              Heart rate monitor was not detected for the latest attempt on this circuit. Connect a BLE/ANT+ monitor to track real-time cardiac load and 5-zone thresholds.
+            </div>
+          </div>
+        `;
+      }
+
+      // 2. Incline & Elevation Profile HTML
+      const elevHtml = `
+        <div class="telemetry-block">
+          <div class="telemetry-block-header">
+            <div class="telemetry-block-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8ecae6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>
+              Elevation & Grade Profile
+            </div>
+            <div class="telemetry-chips">
+              <span class="telemetry-chip">${r.elevation_m > 0 ? r.elevation_m + 'm Gain' : 'Flat'}</span>
+              <span class="telemetry-chip">${avgGrade}% Avg Grade</span>
+              <span class="telemetry-chip ${gradeBadgeClass}">${gradeLabel}</span>
+            </div>
+          </div>
+
+          <!-- Elevation Cross-Section Canvas -->
+          <div style="position: relative; height: 130px; width: 100%; margin-top: 0.25rem;">
+            <canvas id="routeElevationChart"></canvas>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); border-top: 1px solid var(--border-subtle); padding-top: 0.45rem;">
+            <span>Terrain Incline:</span>
+            <div style="display: flex; gap: 0.75rem;">
+              <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #81b29a;"></span>< 2% Flats</span>
+              <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #f2cc8f;"></span>3–5% Rollers</span>
+              <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #e07a5f;"></span>> 6% Steep</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      panel.innerHTML = hrHtml + elevHtml;
+
+      // 3. Render Elevation Cross-Section Area Chart
+      renderRouteElevationChart(r);
     }
 
     function renderRouteDetail(routeIndex) {
@@ -3062,61 +3381,8 @@
         dropdown.value = String(routeIndex);
       }
 
-      // 2. Render GPS Polyline on Map
-      initRouteMap();
-      if (routeMapInstance && r.summary_polyline) {
-        const coords = decodePolyline(r.summary_polyline);
-        if (coords.length > 0) {
-          if (routePolylineLayer) routeMapInstance.removeLayer(routePolylineLayer);
-          if (routeStartMarker) routeMapInstance.removeLayer(routeStartMarker);
-          if (routeEndMarker) routeMapInstance.removeLayer(routeEndMarker);
-
-          // Route polyline with clean minimalist terracotta styling
-          routePolylineLayer = L.polyline(coords, {
-            color: '#e07a5f',
-            weight: 4.5,
-            opacity: 0.95,
-            lineCap: 'round',
-            lineJoin: 'round'
-          }).addTo(routeMapInstance);
-
-          // Start & End markers on public perimeter
-          const startPt = coords[0];
-          const endPt = coords[coords.length - 1];
-
-          routeStartMarker = L.circleMarker(startPt, {
-            radius: 7,
-            fillColor: '#81b29a',
-            color: '#ffffff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 1
-          }).addTo(routeMapInstance).bindTooltip("Public Perimeter Start", { permanent: false });
-
-          routeEndMarker = L.circleMarker(endPt, {
-            radius: 7,
-            fillColor: '#e07a5f',
-            color: '#ffffff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 1
-          }).addTo(routeMapInstance).bindTooltip("Finish Point", { permanent: false });
-
-          // Smoothly fit bounds after layout settles
-          const bounds = routePolylineLayer.getBounds();
-          routeMapInstance.fitBounds(bounds, {
-            padding: [30, 30],
-            maxZoom: 15
-          });
-
-          setTimeout(() => {
-            if (routeMapInstance) {
-              routeMapInstance.invalidateSize();
-              routeMapInstance.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
-            }
-          }, 150);
-        }
-      }
+      // 2. Render Athletic Telemetry (HR Zones & Elevation Grade Profile)
+      renderRouteTelemetry(r);
 
       // 3. Render Form & Recent Pace Info with KPI Tiles
       const infoPanel = document.getElementById("routeInfoPanel");

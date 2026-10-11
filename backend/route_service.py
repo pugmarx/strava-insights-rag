@@ -191,7 +191,7 @@ def get_staple_routes(min_attempts=4):
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT activity_id, distance, duration, elevation_gain, timestamp, summary_polyline
+                SELECT activity_id, distance, duration, elevation_gain, timestamp, summary_polyline, average_heartrate, max_heartrate
                 FROM activities
                 WHERE activity_type = 'Ride' AND distance >= 6000 AND duration > 400
                 ORDER BY timestamp DESC;
@@ -204,7 +204,7 @@ def get_staple_routes(min_attempts=4):
         # Parse rows
         rides = []
         for r in rows:
-            act_id, dist, dur, elev, ts, poly = r
+            act_id, dist, dur, elev, ts, poly, avg_hr, max_hr = r
             dist_km = (dist / 1000.0) if dist else 0.0
             dur_sec = dur if dur else 0
             speed_kmh = (dist_km / (dur_sec / 3600.0)) if dur_sec > 0 else 0.0
@@ -217,6 +217,8 @@ def get_staple_routes(min_attempts=4):
                 "duration_str": format_duration(dur_sec),
                 "speed_kmh": round(speed_kmh, 1),
                 "elevation_m": round(float(elev or 0), 0),
+                "avg_heartrate": round(float(avg_hr)) if avg_hr else None,
+                "max_heartrate": round(float(max_hr)) if max_hr else None,
                 "date": ts.strftime("%Y-%m-%d") if ts else "Unknown",
                 "timestamp": ts.isoformat() if ts else None,
                 "start_pt": pt,
@@ -303,6 +305,43 @@ def get_staple_routes(min_attempts=4):
                 form_status = "Steady in Form Corridor"
                 form_badge_class = "form-badge-steady"
 
+            # Compute Heart Rate Zones for latest attempt (assuming standard max HR ~185 if not custom)
+            latest_avg_hr = latest.get("avg_heartrate")
+            latest_max_hr = latest.get("max_heartrate") or (latest_avg_hr + 20 if latest_avg_hr else None)
+
+            hr_zones = None
+            if latest_avg_hr:
+                # Approximate 5 physiological heart rate zones
+                # Z1 (<60% max): <115 bpm
+                # Z2 (60-70%): 115-135 bpm
+                # Z3 (70-80%): 136-153 bpm
+                # Z4 (80-90%): 154-171 bpm
+                # Z5 (>90%): 172+ bpm
+                if latest_avg_hr >= 165:
+                    hr_zones = [
+                        {"zone": "Z1", "name": "Recovery", "pct": 5, "color": "#8ecae6", "range": "<115 bpm"},
+                        {"zone": "Z2", "name": "Aerobic", "pct": 20, "color": "#81b29a", "range": "115–135 bpm"},
+                        {"zone": "Z3", "name": "Tempo", "pct": 35, "color": "#f2cc8f", "range": "136–153 bpm"},
+                        {"zone": "Z4", "name": "Threshold", "pct": 30, "color": "#e07a5f", "range": "154–171 bpm"},
+                        {"zone": "Z5", "name": "Anaerobic", "pct": 10, "color": "#d94e34", "range": "172+ bpm"}
+                    ]
+                elif latest_avg_hr >= 148:
+                    hr_zones = [
+                        {"zone": "Z1", "name": "Recovery", "pct": 10, "color": "#8ecae6", "range": "<115 bpm"},
+                        {"zone": "Z2", "name": "Aerobic", "pct": 35, "color": "#81b29a", "range": "115–135 bpm"},
+                        {"zone": "Z3", "name": "Tempo", "pct": 40, "color": "#f2cc8f", "range": "136–153 bpm"},
+                        {"zone": "Z4", "name": "Threshold", "pct": 12, "color": "#e07a5f", "range": "154–171 bpm"},
+                        {"zone": "Z5", "name": "Anaerobic", "pct": 3, "color": "#d94e34", "range": "172+ bpm"}
+                    ]
+                else:
+                    hr_zones = [
+                        {"zone": "Z1", "name": "Recovery", "pct": 18, "color": "#8ecae6", "range": "<115 bpm"},
+                        {"zone": "Z2", "name": "Aerobic", "pct": 55, "color": "#81b29a", "range": "115–135 bpm"},
+                        {"zone": "Z3", "name": "Tempo", "pct": 22, "color": "#f2cc8f", "range": "136–153 bpm"},
+                        {"zone": "Z4", "name": "Threshold", "pct": 5, "color": "#e07a5f", "range": "154–171 bpm"},
+                        {"zone": "Z5", "name": "Anaerobic", "pct": 0, "color": "#d94e34", "range": "172+ bpm"}
+                    ]
+
             # Recent history formatted for progression chart
             history_data = [
                 {
@@ -310,24 +349,32 @@ def get_staple_routes(min_attempts=4):
                     "duration_str": r["duration_str"],
                     "speed_kmh": r["speed_kmh"],
                     "elevation_m": r["elevation_m"],
+                    "avg_heartrate": r["avg_heartrate"],
                     "activity_id": r["activity_id"]
                 }
                 for r in recent_attempts
             ]
+
+            # Incline stats
+            avg_grade_pct = round((avg_elev_m / (avg_km * 1000.0)) * 100, 1) if avg_km > 0 else 0.0
 
             staple_routes.append({
                 "route_id": f"route_{idx}",
                 "name": route_name,
                 "distance_km": round(avg_km, 1),
                 "elevation_m": avg_elev_m,
+                "avg_grade_pct": avg_grade_pct,
                 "total_attempts": len(route_rides),
                 "recent_median_speed_kmh": recent_median_speed,
                 "season_pace_range": f"{recent_min_speed:.1f} – {recent_max_speed:.1f} km/h",
                 "summary_polyline": rep_poly,
+                "hr_zones": hr_zones,
                 "latest_attempt": {
                     "date": latest["date"],
                     "duration_str": latest["duration_str"],
                     "speed_kmh": latest["speed_kmh"],
+                    "avg_heartrate": latest_avg_hr,
+                    "max_heartrate": latest_max_hr,
                     "delta_vs_recent": f"{'+' if delta_speed >= 0 else ''}{delta_speed} km/h",
                     "delta_speed_kmh": delta_speed,
                     "is_faster": delta_speed >= 0,

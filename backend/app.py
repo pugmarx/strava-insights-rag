@@ -421,6 +421,32 @@ def api_coach_briefing():
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
+@app.route("/api/coach/diagnosis", methods=["GET"])
+def api_coach_diagnosis():
+    """Return contextual AI coach diagnosis for a specific training scope or workout."""
+    try:
+        from coach_service import get_scoped_coach_diagnosis
+        mode = request.args.get("mode", "limit")
+        val = request.args.get("val")
+        val_int = int(val) if val and val.isdigit() else 5
+        act_id = request.args.get("activity_id")
+        if act_id and act_id.lower() in ("null", "none", "all", ""):
+            act_id = None
+        force_refresh = request.args.get("refresh", "false").lower() in ("true", "1")
+
+        diag = get_scoped_coach_diagnosis(
+            mode=mode,
+            val=val_int,
+            activity_id=act_id,
+            force_refresh=force_refresh
+        )
+        return jsonify(diag), 200
+    except Exception as e:
+        print(f"[Coach Diagnosis API] Error: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+
 @app.route("/api/routes/staples", methods=["GET"])
 def api_staple_routes():
     """Return automatically detected staple routes with all-time personal podiums."""

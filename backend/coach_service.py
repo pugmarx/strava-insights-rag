@@ -300,3 +300,138 @@ Keep the entire output under 130 words. No intro text, no outro text. Start imme
             conn.close()
 
     return result
+
+
+_SCOPED_DIAGNOSIS_CACHE = {}
+_SCOPED_DIAGNOSIS_TTL = 600  # 10 minutes
+
+
+def get_scoped_coach_diagnosis(mode='limit', val=5, activity_id=None, force_refresh=False):
+    """
+    Generate or return cached contextual coach diagnosis for a specific training scope or workout.
+    Supports single workout diagnosis (via activity_id or limit=1) and multi-workout window diagnosis.
+    """
+    global _SCOPED_DIAGNOSIS_CACHE
+    now = time.time()
+
+    cache_key = f"act_{activity_id}" if activity_id else f"{mode}_{val}"
+
+    if not force_refresh and cache_key in _SCOPED_DIAGNOSIS_CACHE:
+        entry = _SCOPED_DIAGNOSIS_CACHE[cache_key]
+        if (now - entry.get("cache_time", 0)) < _SCOPED_DIAGNOSIS_TTL:
+            return entry["data"]
+
+    from recent_service import get_recent_rides, calculate_hr_zones
+
+    target_act = None
+    if activity_id:
+        conn = get_db_connection()
+        if conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT activity_id, distance, duration, elevation_gain, timestamp, average_heartrate, max_heartrate
+                        FROM activities
+                        WHERE activity_id = %s
+                        LIMIT 1;
+                    """, (activity_id,))
+                    row = cur.fetchone()
+                    if row:
+                        act_id, dist, dur, elev, ts, avg_hr, max_hr = row
+                        dist_km = round(float(dist or 0) / 1000.0, 2)
+                        dur_sec = int(dur or 0)
+                        dur_min = round(dur_sec / 60.0, 1)
+                        speed_kmh = round((dist_km / (dur_sec / 3600.0)), 1) if dur_sec > 0 else 0.0
+                        elev_m = round(float(elev or 0), 0)
+                        avg_hr_val = round(float(avg_hr)) if avg_hr else None
+                        max_hr_val = round(float(max_hr)) if max_hr else None
+                        avg_grade_pct = round((elev_m / (dist_km * 1000.0)) * 100, 1) if dist_km > 0 else 0.0
+                        efficiency_ratio = round((speed_kmh / avg_hr_val) * 100, 1) if avg_hr_val and avg_hr_val > 0 else None
+                        hr_zones = calculate_hr_zones(avg_hr_val)
+                        target_act = {
+                            "activity_id": act_id,
+                            "date": ts.strftime("%b %d, %Y") if ts else "Recent",
+                            "distance_km": dist_km,
+                            "duration_min": dur_min,
+                            "speed_kmh": speed_kmh,
+                            "elevation_m": elev_m,
+                            "avg_grade_pct": avg_grade_pct,
+                            "avg_heartrate": avg_hr_val,
+                            "max_heartrate": max_hr_val,
+                            "efficiency_ratio": efficiency_ratio,
+                            "hr_zones": hr_zones
+                        }
+            finally:
+                conn.close()
+
+    if target_act:
+        elev_per_10km = round((target_act['elevation_m'] / target_act['distance_km']) * 10, 1) if target_act['distance_km'] > 0 else 0
+        zones_desc = ", ".join([f"{z['zone']}: {z['pct']}%" for z in (target_act['hr_zones'] or [])]) if target_act['hr_zones'] else "No HR recorded"
+        hr_line = f"Average {target_act['avg_heartrate']} bpm, Peak {target_act['max_heartrate']} bpm. Aerobic Efficiency: {target_act['efficiency_ratio']}" if target_act['avg_heartrate'] else "No heart rate recorded"
+
+        prompt = f"""You are a direct, pragmatic cycling coach diagnosing a specific workout.
+Write EXACTLY 3 bold bullet points directly to the athlete based on this workout's factual telemetry:
+
+Workout Data:
+- Date: {target_act['date']}
+- Distance: {target_act['distance_km']} km in {target_act['duration_min']} mins (Average Pace: {target_act['speed_kmh']} km/h)
+- Climbing & Elevation: {target_act['elevation_m']}m elevation gained, {target_act['avg_grade_pct']}% average gradient ({elev_per_10km}m vertical per 10km)
+- Cardiovascular: {hr_line}
+- HR Zones: {zones_desc}
+
+Format rules:
+Output EXACTLY 3 bold bullets:
+1. **Effort & Climbing Demands**: Incline gradient profile, climbing intensity, and pacing cadence.
+2. **Cardiovascular & Physiological Load**: Cardiac stress, dominant heart rate zone, peak vs average HR response.
+3. **Recovery & Next Focus**: Recommended recovery window (hours) and ideal next session focus.
+
+Keep the entire output under 130 words. No intro or outro text. Start immediately with the bullets."""
+
+    else:
+        recent_data = get_recent_rides(limit=val if mode == 'limit' else None, days=val if mode == 'days' else None)
+        aggs = recent_data.get("aggregates") or {}
+        activities = recent_data.get("activities") or []
+        count = aggs.get("count", len(activities))
+        if count == 0:
+            return {"status": "error", "error": "No activities found in this scope"}
+
+        first_date = activities[-1]['date'] if activities else "Recent"
+        last_date = activities[0]['date'] if activities else "Recent"
+        scope_title = f"{count} Activities ({first_date} - {last_date})" if count > 1 else f"Last Activity ({last_date})"
+        zones_desc = ", ".join([f"{z['zone']}: {z['pct']}%" for z in (aggs.get('overall_hr_zones') or [])])
+
+        prompt = f"""You are a direct, pragmatic cycling coach diagnosing the athlete's current training window.
+Write EXACTLY 3 bold bullet points directly to the athlete based on this window's factual telemetry:
+
+Training Window Data:
+- Window: {scope_title}
+- Total Volume: {aggs.get('total_distance_km', 0)} km across {aggs.get('total_duration_hours', 0)} hours (Overall avg speed: {aggs.get('overall_avg_speed_kmh', 0)} km/h)
+- Total Climbing Elevation: {aggs.get('total_elevation_m', 0)}m elevation gained (Overall avg grade: {aggs.get('overall_avg_grade_pct', 0)}%)
+- Cardiovascular Load: Overall avg HR {aggs.get('overall_avg_hr', 'N/A')} bpm (Avg Aerobic Efficiency: {aggs.get('avg_aerobic_efficiency', 'N/A')})
+- Cardiac Zone Distribution: {zones_desc}
+
+Format rules:
+Output EXACTLY 3 bold bullets:
+1. **Volume & Climbing Demands**: Total elevation gained, grade dynamics, and consistency across the efforts.
+2. **Cardiovascular Adaptation**: Aerobic base development, cardiac efficiency trend (speed vs HR), and threshold exposure.
+3. **Actionable Training Focus**: Concrete directive for the athlete's next 48-72 hours.
+
+Keep the entire output under 130 words. No intro or outro text. Start immediately with the bullets."""
+
+    llm = LLMClient()
+    briefing_text = llm.generate(prompt)
+
+    result = {
+        "status": "success",
+        "scope_key": cache_key,
+        "generated_at": datetime.utcnow().isoformat(),
+        "diagnosis_markdown": briefing_text
+    }
+
+    _SCOPED_DIAGNOSIS_CACHE[cache_key] = {
+        "cache_time": now,
+        "data": result
+    }
+
+    return result
+

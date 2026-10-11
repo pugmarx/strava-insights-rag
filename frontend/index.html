@@ -1746,12 +1746,15 @@
             Coach Diagnosis
           </div>
           <button class="coach-btn-refresh" id="btnRefreshBriefing" title="Generate fresh coach diagnosis">
-            <span id="refreshIcon" style="display: inline-flex; align-items: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg></span>
+            <span id="refreshIcon" style="display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; flex-shrink: 0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block;"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg></span>
             <span>Refresh Diagnosis</span>
           </button>
         </div>
         <div class="coach-content" id="coachBriefingContent">
-          <div style="color: var(--text-muted); font-size: 0.9rem;">Synthesizing training signals...</div>
+          <div style="color: var(--text-muted); font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.5rem; line-height: 1;">
+            <span class="syncing-spin" style="display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex-shrink: 0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block;"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg></span>
+            <span>Synthesizing training signals with coach...</span>
+          </div>
         </div>
       </div>
 
@@ -2733,7 +2736,7 @@
         if (refreshIcon) refreshIcon.classList.add("syncing-spin");
         if (btnRefresh) btnRefresh.disabled = true;
         if (briefingEl) {
-          briefingEl.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;"><span class="syncing-spin" style="display:inline-block;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg></span> Synthesizing training signals with coach...</div>';
+          briefingEl.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.5rem; line-height: 1;"><span class="syncing-spin" style="display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex-shrink: 0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block;"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg></span> <span>Synthesizing training signals with coach...</span></div>';
         }
       }
 
@@ -2746,14 +2749,6 @@
           }
         })
         .catch(err => console.warn("Fast metrics load error:", err));
-
-      // Prefetch Recent Form data in parallel immediately
-      loadRecentFormData(forceRefresh);
-
-      // Also refresh routes immediately in parallel
-      if (forceRefresh) {
-        loadRoutesData();
-      }
 
       // 2. ASYNC PATH: Fetch AI Coach Briefing in the background
       const url = forceRefresh ? '/api/coach/briefing?refresh=true' : '/api/coach/briefing';

@@ -44,59 +44,60 @@ def get_coach_metrics():
 
     try:
         with conn.cursor() as cur:
-            # 1. Anchor 7-day rolling window to today's date
             ref_date = datetime.now().date()
             date_7d_ago = ref_date - timedelta(days=6)
             date_14d_ago = ref_date - timedelta(days=13)
             date_30d_ago = ref_date - timedelta(days=29)
 
-            # 2. Last 7 Days Activities
+            # 1. Consolidated window query (7-day, prev 7-day, 30-day in a single pass)
             cur.execute("""
-                SELECT COUNT(*), COALESCE(SUM(distance), 0), COALESCE(SUM(duration), 0),
-                       COALESCE(AVG(distance / NULLIF(duration, 0)) * 3.6, 0),
-                       AVG(average_heartrate), MAX(max_heartrate)
-                FROM activities
-                WHERE activity_type = 'Ride' AND timestamp::date >= %s AND timestamp::date <= %s;
-            """, (date_7d_ago, ref_date))
-            r7 = cur.fetchone()
-            rides_7d = r7[0] or 0
-            km_7d = round(float(r7[1]) / 1000.0, 1)
-            hours_7d = round(float(r7[2]) / 3600.0, 1)
-            avg_speed_7d = round(float(r7[3]), 1)
-            avg_hr_7d = round(float(r7[4])) if r7[4] else None
-            max_hr_7d = round(float(r7[5])) if r7[5] else None
+                WITH window_bounds AS (
+                    SELECT 
+                        %s::date AS d7,
+                        %s::date AS d14,
+                        %s::date AS d30,
+                        %s::date AS today
+                )
+                SELECT 
+                    COUNT(*) FILTER (WHERE a.timestamp::date >= wb.d7) AS rides_7d,
+                    COALESCE(SUM(a.distance) FILTER (WHERE a.timestamp::date >= wb.d7), 0) AS dist_7d,
+                    COALESCE(SUM(a.duration) FILTER (WHERE a.timestamp::date >= wb.d7), 0) AS dur_7d,
+                    AVG(a.average_heartrate) FILTER (WHERE a.timestamp::date >= wb.d7) AS avg_hr_7d,
+                    MAX(a.max_heartrate) FILTER (WHERE a.timestamp::date >= wb.d7) AS max_hr_7d,
+                    COUNT(*) FILTER (WHERE a.timestamp::date >= wb.d14 AND a.timestamp::date < wb.d7) AS prev_rides_7d,
+                    COALESCE(SUM(a.distance) FILTER (WHERE a.timestamp::date >= wb.d14 AND a.timestamp::date < wb.d7), 0) AS prev_dist_7d,
+                    COUNT(*) FILTER (WHERE a.timestamp::date >= wb.d30) AS rides_30d,
+                    COALESCE(SUM(a.distance) FILTER (WHERE a.timestamp::date >= wb.d30), 0) AS dist_30d,
+                    COALESCE(SUM(a.duration) FILTER (WHERE a.timestamp::date >= wb.d30), 0) AS dur_30d
+                FROM activities a, window_bounds wb
+                WHERE a.activity_type = 'Ride' AND a.timestamp::date >= wb.d30 AND a.timestamp::date <= wb.today;
+            """, (date_7d_ago, date_14d_ago, date_30d_ago, ref_date))
+            
+            row = cur.fetchone()
+            rides_7d = row[0] or 0
+            km_7d = round(float(row[1]) / 1000.0, 1)
+            dur_7d_sec = float(row[2] or 0)
+            hours_7d = round(dur_7d_sec / 3600.0, 1)
+            avg_speed_7d = round((km_7d / (dur_7d_sec / 3600.0)), 1) if dur_7d_sec > 0 else 0
+            avg_hr_7d = round(float(row[3])) if row[3] else None
+            max_hr_7d = round(float(row[4])) if row[4] else None
 
-            # 3. Previous 7 Days Activities (for week-over-week delta)
-            cur.execute("""
-                SELECT COUNT(*), COALESCE(SUM(distance), 0)
-                FROM activities
-                WHERE activity_type = 'Ride' AND timestamp::date >= %s AND timestamp::date < %s;
-            """, (date_14d_ago, date_7d_ago))
-            r_prev7 = cur.fetchone()
-            prev_rides_7d = r_prev7[0] or 0
-            prev_km_7d = round(float(r_prev7[1]) / 1000.0, 1)
+            prev_km_7d = round(float(row[6]) / 1000.0, 1)
             km_delta_7d = round(km_7d - prev_km_7d, 1)
 
-            # 4. Last 30 Days Activities
-            cur.execute("""
-                SELECT COUNT(*), COALESCE(SUM(distance), 0), COALESCE(SUM(duration), 0)
-                FROM activities
-                WHERE activity_type = 'Ride' AND timestamp::date >= %s AND timestamp::date <= %s;
-            """, (date_30d_ago, ref_date))
-            r30 = cur.fetchone()
-            rides_30d = r30[0] or 0
-            km_30d = round(float(r30[1]) / 1000.0, 1)
-            hours_30d = round(float(r30[2]) / 3600.0, 1)
+            rides_30d = row[7] or 0
+            km_30d = round(float(row[8]) / 1000.0, 1)
+            hours_30d = round(float(row[9] or 0) / 3600.0, 1)
 
-            # 5. Distinct Ride Dates in last 7 days
+            # 2. Distinct Ride Dates in last 7 days
             cur.execute("""
                 SELECT DISTINCT timestamp::date
                 FROM activities
                 WHERE activity_type = 'Ride' AND timestamp::date >= %s AND timestamp::date <= %s;
             """, (date_7d_ago, ref_date))
-            ride_dates_7d = set(row[0] for row in cur.fetchall())
+            ride_dates_7d = set(r[0] for r in cur.fetchall())
 
-            # 6. Daily Wellness in last 7 days (Un-tracked movement, ping-pong, walking)
+            # 3. Daily Wellness in last 7 days
             cur.execute("""
                 SELECT calendar_date, (moderate_intensity_minutes + vigorous_intensity_minutes) as intensity_min, active_calories
                 FROM daily_wellness
@@ -109,14 +110,13 @@ def get_coach_metrics():
             for w in wellness_rows:
                 c_date, intensity_min, calories = w[0], w[1] or 0, w[2] or 0
                 total_intensity_min_7d += intensity_min
-                # If day had significant movement (intensity >= 25m or calories >= 300) and was NOT a ride day
                 if (intensity_min >= 25 or calories >= 300) and (c_date not in ride_dates_7d):
                     cross_training_dates.add(c_date)
 
             active_days_count = len(ride_dates_7d | cross_training_dates)
             rest_days_count = max(0, 7 - active_days_count)
 
-            # 7. Latest Ride summary & Heart Rate
+            # 4. Latest Ride summary & Heart Rate
             cur.execute("""
                 SELECT activity_id, distance, duration, elevation_gain, timestamp, average_heartrate, max_heartrate
                 FROM activities
@@ -144,7 +144,7 @@ def get_coach_metrics():
                     "max_heartrate": round(float(l_max_hr)) if l_max_hr else None
                 }
 
-            # 8. Days since last long ride (> 20 km)
+            # 5. Days since last long ride (> 20 km)
             cur.execute("""
                 SELECT MAX(timestamp)
                 FROM activities

@@ -2215,52 +2215,76 @@
         .replace(/\n\n/g, '<br>');
     }
 
+    function renderMetricsCards(m) {
+      if (!m) return;
+      // 1. Days Active pill
+      const activeEl = document.getElementById("valDaysActive");
+      const subActiveEl = document.getElementById("subDaysActive");
+      if (activeEl) activeEl.textContent = `${m.days_active} of 7`;
+      if (subActiveEl) {
+        subActiveEl.textContent = `${m.rides_count_7d} Rides • ${m.cross_training_days_7d} Movement • ${m.rest_days_7d} Rest`;
+      }
+
+      // 2. 7-Day Volume
+      const kmEl = document.getElementById("valKm7d");
+      const subKmEl = document.getElementById("subKm7d");
+      if (kmEl) kmEl.textContent = `${m.km_7d} km`;
+      if (subKmEl) subKmEl.textContent = `${m.km_delta_7d} vs prior week (${m.hours_7d}h)`;
+
+      // 3. Intensity Minutes
+      const intEl = document.getElementById("valIntensity7d");
+      if (intEl) intEl.textContent = `${m.total_intensity_min_7d} min`;
+
+      // 4. Recency
+      const recEl = document.getElementById("valRecency");
+      const subRecEl = document.getElementById("subRecency");
+      if (recEl) {
+        recEl.textContent = m.days_since_ride === 0 ? "Today" : `${m.days_since_ride} day${m.days_since_ride === 1 ? '' : 's'} ago`;
+      }
+      if (subRecEl && m.latest_ride) {
+        subRecEl.textContent = `${m.latest_ride.distance_km} km at ${m.latest_ride.speed_kmh} km/h`;
+      }
+    }
+
     function loadCoachData(forceRefresh = false) {
       const briefingEl = document.getElementById("coachBriefingContent");
       const btnRefresh = document.getElementById("btnRefreshBriefing");
       const refreshIcon = document.getElementById("refreshIcon");
+
       if (forceRefresh) {
         if (refreshIcon) refreshIcon.classList.add("syncing-spin");
         if (btnRefresh) btnRefresh.disabled = true;
+        if (briefingEl) {
+          briefingEl.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;"><span class="syncing-spin" style="display:inline-block;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg></span> Synthesizing training signals with coach...</div>';
+        }
       }
 
+      // 1. FAST PATH: Fetch instant metrics and populate cards immediately
+      fetch('/api/coach/metrics')
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "success" && data.metrics) {
+            renderMetricsCards(data.metrics);
+          }
+        })
+        .catch(err => console.warn("Fast metrics load error:", err));
+
+      // Also refresh routes immediately in parallel
+      if (forceRefresh) {
+        loadRoutesData();
+      }
+
+      // 2. ASYNC PATH: Fetch AI Coach Briefing in the background
       const url = forceRefresh ? '/api/coach/briefing?refresh=true' : '/api/coach/briefing';
       fetch(url)
         .then(res => res.json())
         .then(data => {
           if (refreshIcon) refreshIcon.classList.remove("syncing-spin");
           if (btnRefresh) btnRefresh.disabled = false;
-          if (data.status === "success" && data.metrics) {
-            const m = data.metrics;
-            // 1. Days Active pill
-            const activeEl = document.getElementById("valDaysActive");
-            const subActiveEl = document.getElementById("subDaysActive");
-            if (activeEl) activeEl.textContent = `${m.days_active} of 7`;
-            if (subActiveEl) {
-              subActiveEl.textContent = `${m.rides_count_7d} Rides • ${m.cross_training_days_7d} Movement • ${m.rest_days_7d} Rest`;
+          if (data.status === "success") {
+            if (data.metrics) {
+              renderMetricsCards(data.metrics);
             }
-
-            // 2. 7-Day Volume
-            const kmEl = document.getElementById("valKm7d");
-            const subKmEl = document.getElementById("subKm7d");
-            if (kmEl) kmEl.textContent = `${m.km_7d} km`;
-            if (subKmEl) subKmEl.textContent = `${m.km_delta_7d} vs prior week (${m.hours_7d}h)`;
-
-            // 3. Intensity Minutes
-            const intEl = document.getElementById("valIntensity7d");
-            if (intEl) intEl.textContent = `${m.total_intensity_min_7d} min`;
-
-            // 4. Recency
-            const recEl = document.getElementById("valRecency");
-            const subRecEl = document.getElementById("subRecency");
-            if (recEl) {
-              recEl.textContent = m.days_since_ride === 0 ? "Today" : `${m.days_since_ride} day${m.days_since_ride === 1 ? '' : 's'} ago`;
-            }
-            if (subRecEl && m.latest_ride) {
-              subRecEl.textContent = `${m.latest_ride.distance_km} km at ${m.latest_ride.speed_kmh} km/h`;
-            }
-
-            // 5. Briefing Content
             if (briefingEl) {
               briefingEl.innerHTML = renderCoachMarkdown(data.briefing_markdown);
             }
@@ -2271,7 +2295,8 @@
           }
         })
         .catch(err => {
-          if (btnRefresh) btnRefresh.classList.remove("syncing-spin");
+          if (refreshIcon) refreshIcon.classList.remove("syncing-spin");
+          if (btnRefresh) btnRefresh.disabled = false;
           if (briefingEl) {
             briefingEl.innerHTML = `<div style="color: var(--text-dim);">Could not load coach diagnosis: ${err.message}</div>`;
           }

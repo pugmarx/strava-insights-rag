@@ -396,6 +396,18 @@ def analytics_breakthroughs():
     return jsonify(data), 200
 
 
+@app.route("/api/coach/metrics", methods=["GET"])
+def api_coach_metrics():
+    """Return instant SQL-based 7d/30d performance metrics (fast path)."""
+    try:
+        from coach_service import get_coach_metrics
+        metrics = get_coach_metrics()
+        return jsonify({"status": "success", "metrics": metrics}), 200
+    except Exception as e:
+        print(f"[Coach API] Error fetching metrics: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
 @app.route("/api/coach/briefing", methods=["GET"])
 def api_coach_briefing():
     """Return proactive AI coach briefing and 7d/30d momentum indicators."""

@@ -216,8 +216,16 @@ def format_results(results, cursor_description):
                 else:
                     formatted_row["Date"] = str(value)
             elif col == "activity_id":
-                activity_url = f"https://www.strava.com/activities/{value}"
-                formatted_row["Link"] = f'<a href="{activity_url}" target="_blank" rel="noopener noreferrer">View on Strava</a>'
+                try:
+                    act_num = int(value)
+                    if act_num > 20_000_000_000:
+                        activity_url = f"https://connect.garmin.com/modern/activity/{value}"
+                        formatted_row["Link"] = f'<a href="{activity_url}" target="_blank" rel="noopener noreferrer">View on Garmin</a>'
+                    else:
+                        activity_url = f"https://www.strava.com/activities/{value}"
+                        formatted_row["Link"] = f'<a href="{activity_url}" target="_blank" rel="noopener noreferrer">View on Strava</a>'
+                except (ValueError, TypeError):
+                    formatted_row["Link"] = str(value)
             else:
                 formatted_row[col] = value
 

@@ -3,37 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Strava Activity Insights</title>
+  <title>SpinCycle — Personal Cycling & Movement</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <style>
     :root {
-      /* Strava Brand Identity */
-      --accent: #fc4c02;
-      --accent-hover: #e34402;
-      --primary: #fc4c02;
-      --primary-hover: #e34402;
-      --strava-orange: #fc4c02;
-      --strava-blue: #0284c7;
-      --strava-emerald: #10b981;
-      --strava-amber: #f59e0b;
-      --strava-purple: #8b5cf6;
+      /* Minimalist Athletic Palette */
+      --accent: #e07a5f;              /* Warm terracotta */
+      --accent-hover: #cc664c;
+      --accent-muted: rgba(224, 122, 95, 0.15);
+      --primary: #81b29a;             /* Sage green */
+      --primary-hover: #6ea088;
+      --primary-muted: rgba(129, 178, 154, 0.15);
+      --highlight: #f2cc8f;           /* Warm oat / amber */
+      --sky: #8ecae6;                 /* Soft muted slate blue */
+      --indigo: #9d8189;              /* Muted mauve */
 
-      /* Strava Dark Theme (Default) */
-      --bg-base: #121215;
-      --bg-surface: #1a1a22;
-      --bg-surface-hover: #22222d;
-      --bg-surface-elevated: #282835;
-      --border-subtle: #2e2e3e;
-      --border-focus: #fc4c02;
-      --text-main: #f4f4f7;
-      --text-muted: #a1a1aa;
-      --text-dim: #71717a;
-      --chart-grid: rgba(255, 255, 255, 0.08);
-      --chart-tick: #71717a;
-      --radius-sm: 6px;
-      --radius-md: 10px;
+      /* Minimalist Dark Theme (Default) */
+      --bg-base: #111317;             /* Deep slate-charcoal */
+      --bg-surface: #191c22;          /* Rich midnight container */
+      --bg-surface-hover: #22262e;
+      --bg-surface-elevated: #292d37;
+      --border-subtle: #292e39;
+      --border-focus: #e07a5f;
+      --text-main: #f0f2f5;
+      --text-muted: #9aa1ad;
+      --text-dim: #6c7380;
+      --chart-grid: rgba(255, 255, 255, 0.05);
+      --chart-tick: #6c7380;
+      --radius-sm: 8px;
+      --radius-md: 12px;
       --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
@@ -41,18 +43,18 @@
     html.theme-light,
     body.theme-light,
     :root.theme-light {
-      /* Strava Light Theme */
-      --bg-base: #f7f7f9;
+      /* Minimalist Light Theme */
+      --bg-base: #f7f8fa;
       --bg-surface: #ffffff;
-      --bg-surface-hover: #f1f3f5;
+      --bg-surface-hover: #f0f2f6;
       --bg-surface-elevated: #ffffff;
-      --border-subtle: #e2e8f0;
-      --border-focus: #fc4c02;
-      --text-main: #18181b;
-      --text-muted: #52525b;
-      --text-dim: #94a3b8;
-      --chart-grid: rgba(0, 0, 0, 0.06);
-      --chart-tick: #64748b;
+      --border-subtle: #e4e7ec;
+      --border-focus: #e07a5f;
+      --text-main: #1d2129;
+      --text-muted: #4e5564;
+      --text-dim: #8b93a0;
+      --chart-grid: rgba(0, 0, 0, 0.05);
+      --chart-tick: #6c7380;
     }
 
     * {
@@ -796,6 +798,462 @@
       }
     }
 
+    /* Coach & Routes View Styles */
+    .coach-view {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      width: 100%;
+    }
+
+    .coach-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 1rem;
+    }
+
+    .coach-stat-card {
+      background: linear-gradient(145deg, rgba(29, 34, 43, 0.95) 0%, rgba(22, 26, 33, 0.95) 100%);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    /* Subtle top glow line for stats cards */
+    .coach-stat-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      opacity: 0.8;
+      transition: opacity 0.2s ease;
+    }
+
+    .coach-stat-card.card-days::before {
+      background: linear-gradient(90deg, #81b29a 0%, rgba(129, 178, 154, 0.2) 100%);
+    }
+
+    .coach-stat-card.card-volume::before {
+      background: linear-gradient(90deg, #e07a5f 0%, rgba(224, 122, 95, 0.2) 100%);
+    }
+
+    .coach-stat-card.card-intensity::before {
+      background: linear-gradient(90deg, #f2cc8f 0%, rgba(242, 204, 143, 0.2) 100%);
+    }
+
+    .coach-stat-card.card-recency::before {
+      background: linear-gradient(90deg, #8ecae6 0%, rgba(142, 202, 230, 0.2) 100%);
+    }
+
+    html.theme-light .coach-stat-card {
+      background: linear-gradient(145deg, #ffffff 0%, #f9fafb 100%);
+      box-shadow: 0 2px 12px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .coach-stat-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(224, 122, 95, 0.4);
+      box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.35);
+    }
+
+    html.theme-light .coach-stat-card:hover {
+      box-shadow: 0 6px 18px -3px rgba(0, 0, 0, 0.08);
+    }
+
+    .coach-stat-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .coach-stat-icon-wrap {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-days .coach-stat-icon-wrap {
+      background: rgba(129, 178, 154, 0.15);
+      color: #81b29a;
+    }
+
+    .card-volume .coach-stat-icon-wrap {
+      background: rgba(224, 122, 95, 0.15);
+      color: #e07a5f;
+    }
+
+    .card-intensity .coach-stat-icon-wrap {
+      background: rgba(242, 204, 143, 0.15);
+      color: #f2cc8f;
+    }
+
+    .card-recency .coach-stat-icon-wrap {
+      background: rgba(142, 202, 230, 0.15);
+      color: #8ecae6;
+    }
+
+    .coach-stat-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      letter-spacing: -0.02em;
+    }
+
+    .coach-stat-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .coach-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    .coach-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .coach-card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-main);
+    }
+
+    .coach-btn-refresh {
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      border-radius: var(--radius-sm);
+      padding: 0.3rem 0.65rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s ease;
+    }
+
+    .coach-btn-refresh:hover {
+      background: var(--bg-surface-hover);
+      color: var(--text-main);
+      border-color: var(--border-focus);
+    }
+
+    .coach-content {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: var(--text-main);
+    }
+
+    .coach-content ul {
+      margin-left: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .coach-content li {
+      margin-bottom: 0.25rem;
+    }
+
+    .coach-content strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* Route Analytics Executive Dashboard Styles */
+    .routes-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 0.5rem;
+      padding-bottom: 0.25rem;
+    }
+
+    .routes-section-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      letter-spacing: -0.01em;
+    }
+
+    .route-selector-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .route-select-dropdown {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      font-size: 0.84rem;
+      font-weight: 600;
+      padding: 0.45rem 2.2rem 0.45rem 0.85rem;
+      outline: none;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+    }
+
+    .route-select-dropdown:hover, .route-select-dropdown:focus {
+      border-color: var(--border-focus);
+      background-color: var(--bg-surface-hover);
+    }
+
+    .route-explorer-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      min-height: 480px;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.12);
+    }
+
+    @media (max-width: 960px) {
+      .route-explorer-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .route-map-panel {
+      position: relative;
+      height: 100%;
+      min-height: 460px;
+      background: var(--bg-base);
+      border-right: 1px solid var(--border-subtle);
+    }
+
+    @media (max-width: 960px) {
+      .route-map-panel {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+        min-height: 320px;
+        height: 320px;
+      }
+    }
+
+    #routeMap {
+      width: 100%;
+      height: 100%;
+      min-height: 100%;
+      z-index: 1;
+    }
+
+    .route-info-panel {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+      background: var(--bg-surface);
+    }
+
+    /* Dashboard KPI Mini Strip */
+    .route-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+    }
+
+    .route-kpi-card {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 0.95rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      transition: border-color 0.15s ease;
+    }
+
+    .route-kpi-card:hover {
+      border-color: rgba(252, 76, 2, 0.4);
+    }
+
+    .route-kpi-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+    }
+
+    .route-kpi-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      display: flex;
+      align-items: baseline;
+      gap: 0.25rem;
+    }
+
+    .route-kpi-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+
+    .form-corridor-box {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.9rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-corridor-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .form-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      display: inline-block;
+      letter-spacing: 0.02em;
+    }
+
+    .form-badge-steady {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .form-badge-up {
+      background: rgba(2, 132, 199, 0.15);
+      color: #0284c7;
+      border: 1px solid rgba(2, 132, 199, 0.3);
+    }
+
+    .form-badge-recovery {
+      background: rgba(245, 158, 11, 0.15);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .route-chart-card {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.9rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .route-chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .route-chart-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+    }
+
+    .route-chart-legend {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .btn-ask-route {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 1rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.15s ease;
+      margin-top: auto;
+    }
+
+    .btn-ask-route:hover {
+      background: var(--bg-surface-hover);
+      color: var(--accent);
+      border-color: var(--border-focus);
+    }
+
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
@@ -805,10 +1263,10 @@
   <div class="app-layout">
     <header>
       <div class="brand">
-        <div class="brand-logo">S</div>
+        <div class="brand-logo" style="background: var(--accent);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><circle cx="12" cy="12" r="3"/></svg></div>
         <div class="brand-title">
-          <h1>Strava Activity Insights</h1>
-          <p>Semantic search & SQL analysis over fitness data</p>
+          <h1>SpinCycle</h1>
+          <p>A humble log of rides, movement & daily form</p>
         </div>
       </div>
       <div class="header-actions">
@@ -823,7 +1281,11 @@
 
     <!-- Top Navigation Tabs -->
     <div class="nav-tabs">
-      <button class="nav-tab-btn active" id="tabBtnSearch">
+      <button class="nav-tab-btn active" id="tabBtnCoach">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span>Coach & Routes</span>
+      </button>
+      <button class="nav-tab-btn" id="tabBtnSearch">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <span>Query</span>
       </button>
@@ -837,8 +1299,88 @@
       </button>
     </div>
 
+    <!-- Coach & Routes View -->
+    <div id="viewCoach" class="coach-view">
+      <!-- 7-Day Performance & Days Active Strip -->
+      <div class="coach-stats-grid" id="coachStatsGrid">
+        <div class="coach-stat-card card-days">
+          <div class="coach-stat-label">
+            <span class="coach-stat-icon-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+            Days Active
+          </div>
+          <div class="coach-stat-value" id="valDaysActive">-- of 7</div>
+          <div class="coach-stat-sub" id="subDaysActive">Loading consistency...</div>
+        </div>
+        <div class="coach-stat-card card-volume">
+          <div class="coach-stat-label">
+            <span class="coach-stat-icon-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+            7-Day Volume
+          </div>
+          <div class="coach-stat-value" id="valKm7d">-- km</div>
+          <div class="coach-stat-sub" id="subKm7d">-- vs prior week</div>
+        </div>
+        <div class="coach-stat-card card-intensity">
+          <div class="coach-stat-label">
+            <span class="coach-stat-icon-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+            Intensity Minutes
+          </div>
+          <div class="coach-stat-value" id="valIntensity7d">-- min</div>
+          <div class="coach-stat-sub">Moderate & vigorous movement</div>
+        </div>
+        <div class="coach-stat-card card-recency">
+          <div class="coach-stat-label">
+            <span class="coach-stat-icon-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M16 12l-4-4-4 4"/></svg></span>
+            Recency
+          </div>
+          <div class="coach-stat-value" id="valRecency">-- days ago</div>
+          <div class="coach-stat-sub" id="subRecency">Latest workout status</div>
+        </div>
+      </div>
+
+      <!-- Proactive Coach Card -->
+      <div class="coach-card">
+        <div class="coach-card-header">
+          <div class="coach-card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            AI Coach Diagnosis
+          </div>
+          <button class="coach-btn-refresh" id="btnRefreshBriefing" title="Generate fresh coach diagnosis">
+            <span id="refreshIcon" style="display: inline-flex; align-items: center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg></span>
+            <span>Refresh Diagnosis</span>
+          </button>
+        </div>
+        <div class="coach-content" id="coachBriefingContent">
+          <div style="color: var(--text-muted); font-size: 0.9rem;">Synthesizing training signals...</div>
+        </div>
+      </div>
+
+      <!-- Route Analytics Executive Dashboard Section -->
+      <div class="routes-section-header">
+        <div class="routes-section-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+          Route Analytics
+        </div>
+        <div class="route-selector-wrapper">
+          <label for="routeSelectDropdown" style="font-size: 0.75rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase;">Circuit:</label>
+          <select id="routeSelectDropdown" class="route-select-dropdown" aria-label="Select Route Loop">
+            <option value="">Loading circuits...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Route Explorer Split Card -->
+      <div class="route-explorer-card" id="routeExplorerCard">
+        <div class="route-map-panel">
+          <div id="routeMap"></div>
+        </div>
+        <div class="route-info-panel" id="routeInfoPanel">
+          <div style="color: var(--text-muted); font-size: 0.875rem;">Select a circuit above to view GPS map and form corridor.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Search View -->
-    <div id="viewSearch" class="grid-container">
+    <div id="viewSearch" class="grid-container" style="display: none;">
       <main>
         <div class="card query-card">
           <div class="input-row">
@@ -1140,6 +1682,8 @@
     let currentResponseChartData = null;
     let currentResponseTrendMetric = 'distances';
     let lastResponseRawText = '';
+    let anomalyChartInstance = null;
+    let breakthroughChartInstance = null;
 
     // Markdown-to-HTML parser (clean headers, paragraphs, lists, bold metrics, code)
     function renderMarkdown(text) {
@@ -1511,10 +2055,11 @@
       .then(res => res.json())
       .then(data => {
         syncButton.disabled = false;
-        syncBtnText.classList.remove("syncing-spin");
         if (data.status === "success") {
           syncStatusMessage.textContent = `Synced ${data.synced_count} activities`;
           loadStats();
+          loadCoachData(true);
+          loadRoutesData();
           setTimeout(() => { syncStatusMessage.textContent = ""; }, 5000);
         } else {
           syncStatusMessage.textContent = `Sync failed: ${data.error || 'Unknown'}`;
@@ -1551,13 +2096,27 @@
         localStorage.setItem("strava_insights_theme", "dark");
       }
 
-      // Safely refresh charts if currently visible
+      // Safely refresh charts and map tiles if currently visible
       try {
         if (breakthroughChartInstance && viewBreakthroughs && viewBreakthroughs.style.display !== "none") {
           renderBreakthroughChart();
         }
         if (anomalyChartInstance && viewAnomalies && viewAnomalies.style.display !== "none") {
           renderAnomalyChart();
+        }
+        if (routeMapInstance) {
+          routeMapInstance.eachLayer(layer => {
+            if (layer instanceof L.TileLayer) {
+              routeMapInstance.removeLayer(layer);
+            }
+          });
+          L.tileLayer(getMapTileLayerUrl(isLight), { maxZoom: 16, attribution: 'Tiles &copy; Esri' }).addTo(routeMapInstance);
+        }
+        if (allActiveRoutes && allActiveRoutes.length > 0) {
+          const curRoute = allActiveRoutes[selectedRouteIndex];
+          if (curRoute) {
+            renderRouteTrajectoryChart(curRoute.recent_history, curRoute.recent_median_speed_kmh);
+          }
         }
       } catch (e) {
         console.warn("Theme refresh note:", e);
@@ -1587,25 +2146,41 @@
     // ---------------------------------------------------------------------------
     // Navigation Tabs
     // ---------------------------------------------------------------------------
+    const tabBtnCoach = document.getElementById("tabBtnCoach");
     const tabBtnSearch = document.getElementById("tabBtnSearch");
     const tabBtnAnomalies = document.getElementById("tabBtnAnomalies");
     const tabBtnBreakthroughs = document.getElementById("tabBtnBreakthroughs");
+    const viewCoach = document.getElementById("viewCoach");
     const viewSearch = document.getElementById("viewSearch");
     const viewAnomalies = document.getElementById("viewAnomalies");
     const viewBreakthroughs = document.getElementById("viewBreakthroughs");
 
     function activateTab(activeBtn, activeView) {
-      [tabBtnSearch, tabBtnAnomalies, tabBtnBreakthroughs].forEach(b => {
+      [tabBtnCoach, tabBtnSearch, tabBtnAnomalies, tabBtnBreakthroughs].forEach(b => {
         if (b) b.classList.remove("active");
       });
-      [viewSearch, viewAnomalies, viewBreakthroughs].forEach(v => {
+      [viewCoach, viewSearch, viewAnomalies, viewBreakthroughs].forEach(v => {
         if (v) v.style.display = "none";
       });
 
       if (activeBtn) activeBtn.classList.add("active");
-      if (activeView) activeView.style.display = activeView === viewSearch ? "grid" : "flex";
+      if (activeView) {
+        if (activeView === viewSearch) {
+          activeView.style.display = "grid";
+        } else {
+          activeView.style.display = "flex";
+        }
+      }
     }
 
+    if (tabBtnCoach) {
+      tabBtnCoach.addEventListener("click", () => {
+        activateTab(tabBtnCoach, viewCoach);
+        setTimeout(() => {
+          if (routeMapInstance) routeMapInstance.invalidateSize();
+        }, 150);
+      });
+    }
     tabBtnSearch.addEventListener("click", () => activateTab(tabBtnSearch, viewSearch));
     
     tabBtnAnomalies.addEventListener("click", () => {
@@ -1619,11 +2194,475 @@
     });
 
     // ---------------------------------------------------------------------------
+    // Proactive Coach Briefing & Days Active
+    // ---------------------------------------------------------------------------
+    function renderCoachMarkdown(md) {
+      if (!md) return '<p style="color: var(--text-muted);">No diagnosis available.</p>';
+      return md
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^\s*[\*\-]\s+(.*)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+        .replace(/\n\n/g, '<br>');
+    }
+
+    function loadCoachData(forceRefresh = false) {
+      const briefingEl = document.getElementById("coachBriefingContent");
+      const btnRefresh = document.getElementById("btnRefreshBriefing");
+      const refreshIcon = document.getElementById("refreshIcon");
+      if (forceRefresh) {
+        if (refreshIcon) refreshIcon.classList.add("syncing-spin");
+        if (btnRefresh) btnRefresh.disabled = true;
+      }
+
+      const url = forceRefresh ? '/api/coach/briefing?refresh=true' : '/api/coach/briefing';
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (refreshIcon) refreshIcon.classList.remove("syncing-spin");
+          if (btnRefresh) btnRefresh.disabled = false;
+          if (data.status === "success" && data.metrics) {
+            const m = data.metrics;
+            // 1. Days Active pill
+            const activeEl = document.getElementById("valDaysActive");
+            const subActiveEl = document.getElementById("subDaysActive");
+            if (activeEl) activeEl.textContent = `${m.days_active} of 7`;
+            if (subActiveEl) {
+              subActiveEl.textContent = `🚴‍♂️ ${m.rides_count_7d} Rides • 🏓 ${m.cross_training_days_7d} Movement • 🛌 ${m.rest_days_7d} Rest`;
+            }
+
+            // 2. 7-Day Volume
+            const kmEl = document.getElementById("valKm7d");
+            const subKmEl = document.getElementById("subKm7d");
+            if (kmEl) kmEl.textContent = `${m.km_7d} km`;
+            if (subKmEl) subKmEl.textContent = `${m.km_delta_7d} vs prior week (${m.hours_7d}h)`;
+
+            // 3. Intensity Minutes
+            const intEl = document.getElementById("valIntensity7d");
+            if (intEl) intEl.textContent = `${m.total_intensity_min_7d} min`;
+
+            // 4. Recency
+            const recEl = document.getElementById("valRecency");
+            const subRecEl = document.getElementById("subRecency");
+            if (recEl) {
+              recEl.textContent = m.days_since_ride === 0 ? "Today" : `${m.days_since_ride} day${m.days_since_ride === 1 ? '' : 's'} ago`;
+            }
+            if (subRecEl && m.latest_ride) {
+              subRecEl.textContent = `${m.latest_ride.distance_km} km at ${m.latest_ride.speed_kmh} km/h`;
+            }
+
+            // 5. Briefing Content
+            if (briefingEl) {
+              briefingEl.innerHTML = renderCoachMarkdown(data.briefing_markdown);
+            }
+          } else {
+            if (briefingEl) {
+              briefingEl.innerHTML = `<div style="color: var(--text-dim);">${data.error || 'Coach diagnosis temporarily unavailable.'}</div>`;
+            }
+          }
+        })
+        .catch(err => {
+          if (btnRefresh) btnRefresh.classList.remove("syncing-spin");
+          if (briefingEl) {
+            briefingEl.innerHTML = `<div style="color: var(--text-dim);">Could not load coach diagnosis: ${err.message}</div>`;
+          }
+        });
+    }
+
+    const btnRefreshBriefing = document.getElementById("btnRefreshBriefing");
+    if (btnRefreshBriefing) {
+      btnRefreshBriefing.addEventListener("click", () => loadCoachData(true));
+    }
+
+    // ---------------------------------------------------------------------------
+    // Route Explorer, GPS Telemetry & Current Season Form Tracker
+    // ---------------------------------------------------------------------------
+    let routeMapInstance = null;
+    let routePolylineLayer = null;
+    let routeStartMarker = null;
+    let routeEndMarker = null;
+    let allActiveRoutes = [];
+    let selectedRouteIndex = 0;
+    let routeTrajectoryChartInstance = null;
+
+    function renderRouteTrajectoryChart(history, medianSpeed) {
+      const canvas = document.getElementById("routeTrajectoryChart");
+      if (!canvas || typeof Chart === 'undefined') return;
+
+      if (routeTrajectoryChartInstance) {
+        routeTrajectoryChartInstance.destroy();
+        routeTrajectoryChartInstance = null;
+      }
+
+      // History is sorted DESC (latest first) -> reverse for chronological line
+      const chronological = [...(history || [])].reverse();
+      const labels = chronological.map(h => h.date ? h.date.slice(5) : '');
+      const dataSpeeds = chronological.map(h => h.speed_kmh);
+      const dataElevs = chronological.map(h => h.elevation_m || 0);
+      const isLight = document.body.classList.contains("theme-light");
+
+      routeTrajectoryChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Speed (km/h)',
+              data: dataSpeeds,
+              yAxisID: 'y',
+              borderColor: '#e07a5f',
+              backgroundColor: 'rgba(224, 122, 95, 0.08)',
+              borderWidth: 2.5,
+              tension: 0.35,
+              fill: true,
+              pointBackgroundColor: chronological.map((_, i) => i === chronological.length - 1 ? '#81b29a' : '#e07a5f'),
+              pointBorderColor: '#ffffff',
+              pointBorderWidth: 1.5,
+              pointRadius: chronological.map((_, i) => i === chronological.length - 1 ? 5.5 : 3.5),
+              pointHoverRadius: 7
+            },
+            {
+              label: 'Elevation (m)',
+              data: dataElevs,
+              yAxisID: 'y1',
+              type: 'bar',
+              backgroundColor: isLight ? 'rgba(142, 202, 230, 0.35)' : 'rgba(142, 202, 230, 0.22)',
+              hoverBackgroundColor: isLight ? 'rgba(142, 202, 230, 0.55)' : 'rgba(142, 202, 230, 0.4)',
+              borderRadius: 4,
+              barPercentage: 0.45,
+              borderWidth: 0
+            },
+            {
+              label: 'Median Speed',
+              data: chronological.map(() => medianSpeed),
+              yAxisID: 'y',
+              borderColor: isLight ? 'rgba(0, 0, 0, 0.22)' : 'rgba(255, 255, 255, 0.25)',
+              borderWidth: 1.5,
+              borderDash: [4, 4],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: isLight ? '#ffffff' : '#1a1a22',
+              titleColor: isLight ? '#18181b' : '#f4f4f7',
+              bodyColor: isLight ? '#52525b' : '#a1a1aa',
+              borderColor: isLight ? '#e2e8f0' : '#2e2e3e',
+              borderWidth: 1,
+              padding: 8,
+              boxPadding: 4,
+              callbacks: {
+                title: (items) => {
+                  const idx = items[0].dataIndex;
+                  return chronological[idx] ? `${chronological[idx].date} (${chronological[idx].duration_str})` : '';
+                },
+                label: (ctx) => {
+                  if (ctx.datasetIndex === 0) return `Pace: ${ctx.parsed.y} km/h`;
+                  if (ctx.datasetIndex === 1) return `Climbing: ${ctx.parsed.y} m`;
+                  if (ctx.datasetIndex === 2) return `Median Corridor: ${medianSpeed} km/h`;
+                  return `${ctx.dataset.label}: ${ctx.parsed.y}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                color: isLight ? '#64748b' : '#71717a',
+                font: { size: 10, weight: '500' }
+              }
+            },
+            y: {
+              type: 'linear',
+              position: 'left',
+              title: {
+                display: false
+              },
+              grid: { color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.06)' },
+              ticks: {
+                color: '#e07a5f',
+                font: { size: 10, weight: '600' },
+                callback: (val) => `${val}`
+              }
+            },
+            y1: {
+              type: 'linear',
+              position: 'right',
+              title: {
+                display: false
+              },
+              grid: { display: false },
+              ticks: {
+                color: '#8ecae6',
+                font: { size: 10, weight: '600' },
+                callback: (val) => `${val}m`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Decode Google Encoded Polyline into [lat, lng] array
+    function decodePolyline(encoded) {
+      if (!encoded) return [];
+      const poly = [];
+      let index = 0, len = encoded.length;
+      let lat = 0, lng = 0;
+
+      while (index < len) {
+        let b, shift = 0, result = 0;
+        do {
+          b = encoded.charCodeAt(index++) - 63;
+          result |= (b & 0x1f) << shift;
+          shift += 5;
+        } while (b >= 0x20);
+        const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lat += dlat;
+
+        shift = 0;
+        result = 0;
+        do {
+          b = encoded.charCodeAt(index++) - 63;
+          result |= (b & 0x1f) << shift;
+          shift += 5;
+        } while (b >= 0x20);
+        const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lng += dlng;
+
+        poly.push([lat * 1e-5, lng * 1e-5]);
+      }
+      return poly;
+    }
+
+    function getMapTileLayerUrl(isLight) {
+      return isLight
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+    }
+
+    function initRouteMap() {
+      const mapContainer = document.getElementById("routeMap");
+      if (!mapContainer || typeof L === 'undefined') return;
+
+      if (!routeMapInstance) {
+        routeMapInstance = L.map('routeMap', {
+          zoomControl: true,
+          attributionControl: false
+        }).setView([18.5204, 73.8567], 13);
+
+        const isLight = document.body.classList.contains("theme-light");
+        L.tileLayer(getMapTileLayerUrl(isLight), {
+          maxZoom: 16,
+          attribution: 'Tiles &copy; Esri'
+        }).addTo(routeMapInstance);
+      }
+    }
+
+    function renderRouteDetail(routeIndex) {
+      if (!allActiveRoutes || allActiveRoutes.length === 0) return;
+      selectedRouteIndex = routeIndex;
+      const r = allActiveRoutes[routeIndex];
+      if (!r) return;
+
+      // 1. Sync dropdown selection
+      const dropdown = document.getElementById("routeSelectDropdown");
+      if (dropdown && dropdown.value !== String(routeIndex)) {
+        dropdown.value = String(routeIndex);
+      }
+
+      // 2. Render GPS Polyline on Map
+      initRouteMap();
+      if (routeMapInstance && r.summary_polyline) {
+        const coords = decodePolyline(r.summary_polyline);
+        if (coords.length > 0) {
+          if (routePolylineLayer) routeMapInstance.removeLayer(routePolylineLayer);
+          if (routeStartMarker) routeMapInstance.removeLayer(routeStartMarker);
+          if (routeEndMarker) routeMapInstance.removeLayer(routeEndMarker);
+
+          // Route polyline with clean minimalist terracotta styling
+          routePolylineLayer = L.polyline(coords, {
+            color: '#e07a5f',
+            weight: 4.5,
+            opacity: 0.95,
+            lineCap: 'round',
+            lineJoin: 'round'
+          }).addTo(routeMapInstance);
+
+          // Start & End markers on public perimeter
+          const startPt = coords[0];
+          const endPt = coords[coords.length - 1];
+
+          routeStartMarker = L.circleMarker(startPt, {
+            radius: 7,
+            fillColor: '#81b29a',
+            color: '#ffffff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 1
+          }).addTo(routeMapInstance).bindTooltip("Public Perimeter Start", { permanent: false });
+
+          routeEndMarker = L.circleMarker(endPt, {
+            radius: 7,
+            fillColor: '#e07a5f',
+            color: '#ffffff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 1
+          }).addTo(routeMapInstance).bindTooltip("Finish Point", { permanent: false });
+
+          // Smoothly fit bounds after layout settles
+          const bounds = routePolylineLayer.getBounds();
+          routeMapInstance.fitBounds(bounds, {
+            padding: [30, 30],
+            maxZoom: 15
+          });
+
+          setTimeout(() => {
+            if (routeMapInstance) {
+              routeMapInstance.invalidateSize();
+              routeMapInstance.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+            }
+          }, 150);
+        }
+      }
+
+      // 3. Render Form & Recent Pace Info with KPI Tiles
+      const infoPanel = document.getElementById("routeInfoPanel");
+      const lat = r.latest_attempt;
+      const history = r.recent_history || [];
+
+      infoPanel.innerHTML = `
+        <!-- KPI Strip -->
+        <div class="route-kpi-grid">
+          <div class="route-kpi-card">
+            <div class="route-kpi-label">Latest Pace</div>
+            <div class="route-kpi-value">${lat.speed_kmh} <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-dim);">km/h</span></div>
+            <div class="route-kpi-sub">${lat.date} • ${lat.duration_str}</div>
+          </div>
+          <div class="route-kpi-card">
+            <div class="route-kpi-label">Target Corridor</div>
+            <div class="route-kpi-value" style="font-size: 1.1rem;">${r.season_pace_range}</div>
+            <div class="route-kpi-sub">Median: ${r.recent_median_speed_kmh} km/h</div>
+          </div>
+          <div class="route-kpi-card">
+            <div class="route-kpi-label">Elevation Gain</div>
+            <div class="route-kpi-value">${r.elevation_m > 0 ? r.elevation_m + ' <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-dim);">m</span>' : 'Flat'}</div>
+            <div class="route-kpi-sub">${r.total_attempts} total logged rides</div>
+          </div>
+        </div>
+
+        <!-- Form Status Capsule -->
+        <div class="form-corridor-box">
+          <div class="form-corridor-title">
+            <span>2026 Form Status</span>
+            <span class="form-badge ${lat.form_badge_class}">${lat.form_status}</span>
+          </div>
+          <div style="font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.15rem; line-height: 1.4;">
+            Current ride is pacing 
+            <strong style="color: ${lat.delta_speed_kmh >= 0 ? '#10b981' : '#f59e0b'};">
+              ${lat.delta_vs_recent}
+            </strong> 
+            relative to your recent 2026 rolling baseline (${r.recent_median_speed_kmh} km/h).
+          </div>
+        </div>
+
+        <!-- Speed & Elevation History Progression Chart -->
+        <div class="route-chart-card">
+          <div class="route-chart-header">
+            <div class="route-chart-title">Recent Efforts Progression (Speed & Elevation)</div>
+            <div class="route-chart-legend">
+              <span class="legend-item"><span class="legend-dot" style="background: #e07a5f;"></span>Speed (km/h)</span>
+              <span class="legend-item"><span class="legend-dot" style="background: #8ecae6;"></span>Elevation (m)</span>
+              <span class="legend-item"><span style="border-top: 2px dashed #9aa1ad; width: 12px; display: inline-block;"></span>Median</span>
+            </div>
+          </div>
+          <div style="position: relative; height: 140px; width: 100%; margin-top: 0.25rem;">
+            <canvas id="routeTrajectoryChart"></canvas>
+          </div>
+        </div>
+
+        <button class="btn-ask-route" id="btnAskRouteLoop" data-route="${r.name}" data-km="${r.distance_km}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Ask AI Coach to Deep-Dive This Loop
+        </button>
+      `;
+
+      // Render Trajectory Line Chart with Dual Axis (Speed + Elevation)
+      renderRouteTrajectoryChart(history, r.recent_median_speed_kmh);
+
+      // Prompt button listener
+      const btnAsk = document.getElementById("btnAskRouteLoop");
+      if (btnAsk) {
+        btnAsk.addEventListener("click", () => {
+          const rName = btnAsk.getAttribute("data-route");
+          const rKm = btnAsk.getAttribute("data-km");
+          const prompt = `How am I trending on my ${rName} (${rKm} km)? Compare my recent efforts in 2026 and suggest how to optimize my pace.`;
+          tabBtnSearch.click();
+          questionInput.value = prompt;
+          sendQuery(prompt);
+        });
+      }
+    }
+
+    function loadRoutesData() {
+      const dropdown = document.getElementById("routeSelectDropdown");
+      const infoPanel = document.getElementById("routeInfoPanel");
+
+      fetch('/api/routes/staples')
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "success" && data.routes && data.routes.length > 0) {
+            allActiveRoutes = data.routes;
+
+            // Populate custom dropdown options
+            if (dropdown) {
+              dropdown.innerHTML = data.routes.map((r, idx) => `
+                <option value="${idx}">
+                  ${r.name} • ${r.distance_km} km (${r.total_attempts} rides)
+                </option>
+              `).join('');
+
+              dropdown.onchange = (e) => {
+                const idx = parseInt(e.target.value, 10);
+                renderRouteDetail(idx);
+              };
+            }
+
+            // Render first active route
+            renderRouteDetail(0);
+          } else {
+            if (dropdown) {
+              dropdown.innerHTML = '<option value="">No active routes found</option>';
+            }
+            infoPanel.innerHTML = '<div style="color: var(--text-dim); padding: 1rem;">No recent route GPS telemetry found.</div>';
+          }
+        })
+        .catch(err => {
+          if (dropdown) {
+            dropdown.innerHTML = `<option value="">Could not load routes</option>`;
+          }
+        });
+    }
+
+    // Initialize Coach and Routes on load
+    loadCoachData();
+    loadRoutesData();
+
+    // ---------------------------------------------------------------------------
     // Shared Analytics Data & Cache
     // ---------------------------------------------------------------------------
     let allAnalyticsData = [];
-    let anomalyChartInstance = null;
-    let breakthroughChartInstance = null;
     let selectedAnomalyItem = null;
     let selectedBreakthroughItem = null;
 

@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS activities (
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS elevation_gain FLOAT DEFAULT 0;
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS elapsed_time INT;
 ALTER TABLE activities ADD COLUMN IF NOT EXISTS summary_polyline TEXT;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS average_heartrate FLOAT;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS max_heartrate FLOAT;
 
 -- Create table to persist Strava OAuth tokens across container restarts
 CREATE TABLE IF NOT EXISTS strava_tokens (
@@ -74,6 +76,19 @@ CREATE TABLE IF NOT EXISTS activity_streams (
 
 CREATE INDEX IF NOT EXISTS activity_streams_created_at_idx ON activity_streams (created_at);
 
+-- Create table to track daily background wellness (steps, intensity minutes, active calories)
+CREATE TABLE IF NOT EXISTS daily_wellness (
+    calendar_date DATE PRIMARY KEY,
+    total_steps INT DEFAULT 0,
+    active_calories FLOAT DEFAULT 0,
+    moderate_intensity_minutes INT DEFAULT 0,
+    vigorous_intensity_minutes INT DEFAULT 0,
+    max_heart_rate INT DEFAULT 0,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS daily_wellness_date_idx ON daily_wellness(calendar_date);
+
 -- Row Level Security (RLS) Enablement
 -- Blocks public PostgREST HTTP access in Supabase while preserving direct database connections for backend
 ALTER TABLE IF EXISTS activities ENABLE ROW LEVEL SECURITY;
@@ -81,6 +96,7 @@ ALTER TABLE IF EXISTS strava_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS query_cache ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS query_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS activity_streams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS daily_wellness ENABLE ROW LEVEL SECURITY;
 
 
 

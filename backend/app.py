@@ -17,6 +17,11 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from sql_rag import handle_rag_query, hybrid_query_handler
 from strava_service import sync_single_activity, delete_activity, sync_incremental, get_latest_activity_timestamp
+try:
+    from garmin_service import sync_garmin_incremental, TOKEN_DIR as GARMIN_TOKEN_DIR
+except ImportError:
+    sync_garmin_incremental = None
+    GARMIN_TOKEN_DIR = None
 from token_manager import get_db_connection
 from cache_manager import init_cache_table, invalidate_all_caches
 from query_logger import init_query_log_table, log_query_event, fetch_failed_queries, get_query_health_summary
@@ -50,14 +55,25 @@ def _init_db_schema():
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     );
                     CREATE INDEX IF NOT EXISTS activity_streams_created_at_idx ON activity_streams (created_at);
+                    CREATE TABLE IF NOT EXISTS daily_wellness (
+                        calendar_date DATE PRIMARY KEY,
+                        total_steps INT DEFAULT 0,
+                        active_calories FLOAT DEFAULT 0,
+                        moderate_intensity_minutes INT DEFAULT 0,
+                        vigorous_intensity_minutes INT DEFAULT 0,
+                        max_heart_rate INT DEFAULT 0,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE INDEX IF NOT EXISTS daily_wellness_date_idx ON daily_wellness(calendar_date);
                     ALTER TABLE IF EXISTS activities ENABLE ROW LEVEL SECURITY;
                     ALTER TABLE IF EXISTS strava_tokens ENABLE ROW LEVEL SECURITY;
                     ALTER TABLE IF EXISTS query_cache ENABLE ROW LEVEL SECURITY;
                     ALTER TABLE IF EXISTS query_logs ENABLE ROW LEVEL SECURITY;
                     ALTER TABLE IF EXISTS activity_streams ENABLE ROW LEVEL SECURITY;
+                    ALTER TABLE IF EXISTS daily_wellness ENABLE ROW LEVEL SECURITY;
                 """)
                 conn.commit()
-                print("[DB] Schema verified: elevation_gain, elapsed_time, summary_polyline & activity_streams active with RLS.")
+                print("[DB] Schema verified: elevation_gain, elapsed_time, summary_polyline, activity_streams & daily_wellness active with RLS.")
         except Exception as e:
             print(f"[DB] Schema migration check note: {e}")
         finally:
@@ -298,11 +314,33 @@ def strava_webhook_event():
 
 @app.route("/api/sync", methods=["POST"])
 def trigger_sync():
-    """Trigger on-demand incremental sync of latest Strava activities."""
+    """Trigger on-demand incremental sync of latest activities from Garmin or Strava."""
     try:
         data = request.get_json(silent=True) or {}
         limit = int(data.get("limit", 50))
-        result = sync_incremental(limit=limit)
+        provider = data.get("provider", "").lower()
+
+        garmin_available = bool(
+            sync_garmin_incremental and (
+                (GARMIN_TOKEN_DIR and GARMIN_TOKEN_DIR.exists() and any(GARMIN_TOKEN_DIR.iterdir()))
+                or os.getenv("GARMIN_EMAIL")
+            )
+        )
+
+        if provider == "garmin" or (garmin_available and provider != "strava"):
+            result = sync_garmin_incremental(limit=limit)
+        else:
+            # Fallback to Strava
+            result = sync_incremental(limit=limit)
+
+        try:
+            from coach_service import invalidate_coach_briefing_cache
+            from route_service import invalidate_routes_cache
+            invalidate_coach_briefing_cache()
+            invalidate_routes_cache()
+        except Exception:
+            pass
+
         return jsonify(result), 200
     except Exception as e:
         print(f"[Sync API] Error during sync: {e}")
@@ -326,9 +364,17 @@ def sync_status():
             else:
                 latest_timestamp = str(latest_val) if latest_val else None
 
+            garmin_available = bool(
+                sync_garmin_incremental and (
+                    (GARMIN_TOKEN_DIR and GARMIN_TOKEN_DIR.exists() and any(GARMIN_TOKEN_DIR.iterdir()))
+                    or os.getenv("GARMIN_EMAIL")
+                )
+            )
+
             return jsonify({
                 "total_activities": total_activities,
-                "latest_timestamp": latest_timestamp
+                "latest_timestamp": latest_timestamp,
+                "provider": "garmin" if garmin_available else "strava"
             }), 200
     except Exception as e:
         print(f"[Sync Status] Query error: {e}")
@@ -350,11 +396,40 @@ def analytics_breakthroughs():
     return jsonify(data), 200
 
 
+@app.route("/api/coach/briefing", methods=["GET"])
+def api_coach_briefing():
+    """Return proactive AI coach briefing and 7d/30d momentum indicators."""
+    try:
+        from coach_service import get_coach_briefing
+        force_refresh = request.args.get("refresh", "false").lower() in ("true", "1")
+        briefing = get_coach_briefing(force_refresh=force_refresh)
+        return jsonify(briefing), 200
+    except Exception as e:
+        print(f"[Coach API] Error generating briefing: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@app.route("/api/routes/staples", methods=["GET"])
+def api_staple_routes():
+    """Return automatically detected staple routes with all-time personal podiums."""
+    try:
+        from route_service import get_staple_routes
+        routes = get_staple_routes()
+        return jsonify({"status": "success", "routes": routes}), 200
+    except Exception as e:
+        print(f"[Routes API] Error fetching staple routes: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
 @app.route("/api/cache/clear", methods=["POST"])
 def clear_cache():
     """Manually invalidate both in-memory and database query caches."""
     try:
         invalidate_all_caches()
+        from coach_service import invalidate_coach_briefing_cache
+        from route_service import invalidate_routes_cache
+        invalidate_coach_briefing_cache()
+        invalidate_routes_cache()
         return jsonify({"status": "success", "message": "All caches cleared"}), 200
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500

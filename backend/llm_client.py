@@ -120,31 +120,42 @@ class LLMClient:
         return f"Error connecting to Hugging Face API: {' | '.join(errors)}"
 
     def _call_groq(self, prompt: str, system_instruction: str = None) -> str:
-        """Call Groq Cloud API."""
+        """Call Groq Cloud API with automatic model fallbacks."""
         if not self.groq_api_key:
             return "Error: GROQ_API_KEY is not set in environment or .env file."
-        try:
-            headers = {
-                "Authorization": f"Bearer {self.groq_api_key}",
-                "Content-Type": "application/json"
-            }
-            messages = []
-            if system_instruction:
-                messages.append({"role": "system", "content": system_instruction})
-            messages.append({"role": "user", "content": prompt})
-            
-            payload = {
-                "model": self.groq_model,
-                "messages": messages,
-                "temperature": 0.3,
-                "max_tokens": self.max_tokens
-            }
-            res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=20)
-            res.raise_for_status()
-            data = res.json()
-            return data["choices"][0]["message"]["content"]
-        except Exception as e:
-            return f"Error connecting to Groq API: {e}"
+        
+        headers = {
+            "Authorization": f"Bearer {self.groq_api_key}",
+            "Content-Type": "application/json"
+        }
+        messages = []
+        if system_instruction:
+            messages.append({"role": "system", "content": system_instruction})
+        messages.append({"role": "user", "content": prompt})
+
+        candidate_models = [self.groq_model]
+        for fallback in ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]:
+            if fallback not in candidate_models:
+                candidate_models.append(fallback)
+
+        errors = []
+        for model_id in candidate_models:
+            try:
+                payload = {
+                    "model": model_id,
+                    "messages": messages,
+                    "temperature": 0.3,
+                    "max_tokens": self.max_tokens
+                }
+                res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=20)
+                if res.status_code == 200:
+                    data = res.json()
+                    return data["choices"][0]["message"]["content"]
+                errors.append(f"Groq {model_id} ({res.status_code}): {res.text}")
+            except Exception as e:
+                errors.append(f"Groq {model_id} error: {e}")
+
+        return f"Error connecting to Groq API: {' | '.join(errors)}"
 
     def _call_ollama(self, prompt: str, system_instruction: str = None) -> str:
         """Call local Ollama instance."""

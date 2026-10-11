@@ -13,6 +13,8 @@ env/
 # Ignore locally stored token files
 *.token
 token.json
+*.garmin*
+.garmin*
 
 # Ignore sensitive files/local cache
 activities.json

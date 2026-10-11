@@ -13,3 +13,4 @@ matplotlib
 seaborn
 tqdm
 cachetools
+garminconnect

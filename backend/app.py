@@ -438,8 +438,11 @@ def api_recent_activities():
     """Return recent chronological workouts with performance telemetry."""
     try:
         from recent_service import get_recent_rides
-        limit = min(int(request.args.get("limit", 10)), 50)
-        data = get_recent_rides(limit=limit)
+        limit = request.args.get("limit")
+        days = request.args.get("days")
+        limit = int(limit) if limit else None
+        days = int(days) if days else None
+        data = get_recent_rides(limit=limit, days=days)
         return jsonify({"status": "success", **data}), 200
     except Exception as e:
         print(f"[Recent API] Error fetching recent activities: {e}")

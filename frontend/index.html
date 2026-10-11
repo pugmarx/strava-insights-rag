@@ -1256,59 +1256,190 @@
       background-color: var(--bg-surface-hover);
     }
 
-    .route-explorer-card {
+    /* ---------------------------------------------------------------------------
+       Unified Deep Dive & Athletic Telemetry
+       --------------------------------------------------------------------------- */
+    .deep-dive-section {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-md);
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+      padding: 1.25rem;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.08);
+    }
+
+    .deep-dive-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 0.9rem;
+    }
+
+    .deep-dive-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .deep-dive-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-base);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .deep-dive-subtitle {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .deep-dive-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .deep-dive-scope-pills {
+      display: flex;
+      background: var(--bg-base);
+      padding: 3px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      gap: 3px;
+    }
+
+    .scope-pill-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .scope-pill-btn:hover {
+      color: var(--text-base);
+      background: var(--bg-surface-hover);
+    }
+
+    .scope-pill-btn.active {
+      background: var(--accent);
+      color: #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .deep-dive-dropdown {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.4rem 2rem 0.4rem 0.75rem;
+      font-size: 0.75rem;
+      color: var(--text-base);
+      font-weight: 500;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888899' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+    }
+
+    .deep-dive-dropdown:hover, .deep-dive-dropdown:focus {
+      border-color: var(--border-focus);
+    }
+
+    /* Executive Metrics Banner */
+    .deep-dive-metrics-strip {
       display: grid;
-      grid-template-columns: 1.1fr 1fr;
-      min-height: 480px;
-      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.12);
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .deep-dive-metric-tile {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      transition: border-color 0.15s ease;
+    }
+
+    .deep-dive-metric-tile:hover {
+      border-color: rgba(224, 122, 95, 0.35);
+    }
+
+    .deep-dive-metric-tile.climb-highlight {
+      border-color: rgba(142, 202, 230, 0.45);
+      background: linear-gradient(to bottom right, var(--bg-base), rgba(142, 202, 230, 0.06));
+    }
+
+    .deep-dive-metric-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .deep-dive-metric-val {
+      font-size: 1.18rem;
+      font-weight: 700;
+      color: var(--text-base);
+    }
+
+    .deep-dive-metric-sub {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* Cards Grid */
+    .deep-dive-cards-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 1.15rem;
     }
 
     @media (max-width: 960px) {
-      .route-explorer-card {
+      .deep-dive-cards-grid {
         grid-template-columns: 1fr;
       }
     }
 
-    .route-telemetry-panel {
-      position: relative;
-      height: 100%;
+    .telemetry-card {
       background: var(--bg-base);
-      border-right: 1px solid var(--border-subtle);
-      padding: 1.25rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.15rem;
-      overflow-y: auto;
-    }
-
-    @media (max-width: 960px) {
-      .route-telemetry-panel {
-        border-right: none;
-        border-bottom: 1px solid var(--border-subtle);
-        padding: 1rem;
-      }
-    }
-
-    .telemetry-block {
-      background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-sm);
-      padding: 1rem;
+      padding: 1.15rem;
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 0.85rem;
       transition: border-color 0.15s ease;
     }
 
-    .telemetry-block:hover {
-      border-color: rgba(224, 122, 95, 0.35);
+    .telemetry-card:hover {
+      border-color: rgba(224, 122, 95, 0.3);
     }
 
-    .telemetry-block-header {
+    .telemetry-card-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -1316,13 +1447,13 @@
       flex-wrap: wrap;
     }
 
-    .telemetry-block-title {
+    .telemetry-card-title {
       font-size: 0.8125rem;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--text-base);
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.45rem;
       text-transform: uppercase;
       letter-spacing: 0.03em;
     }
@@ -1429,135 +1560,24 @@
       border: 1px solid rgba(224, 122, 95, 0.35);
     }
 
-    .route-info-panel {
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.15rem;
-      background: var(--bg-surface);
-    }
-
-    /* Dashboard KPI Mini Strip */
-    .route-kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.75rem;
-    }
-
-    .route-kpi-card {
-      background: var(--bg-base);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 0.85rem 0.95rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-      transition: border-color 0.15s ease;
-    }
-
-    .route-kpi-card:hover {
-      border-color: rgba(252, 76, 2, 0.4);
-    }
-
-    .route-kpi-label {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-dim);
+    .climbing-footer {
       display: flex;
       align-items: center;
-      gap: 0.35rem;
-    }
-
-    .route-kpi-value {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--text-main);
-      font-family: var(--font-sans);
-      display: flex;
-      align-items: baseline;
-      gap: 0.25rem;
-    }
-
-    .route-kpi-sub {
-      font-size: 0.75rem;
+      justify-content: space-between;
+      font-size: 0.72rem;
       color: var(--text-muted);
-      line-height: 1.3;
-    }
-
-    .form-corridor-box {
-      background: var(--bg-base);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 0.9rem 1.1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
-    .form-corridor-title {
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-dim);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .form-badge {
-      font-size: 0.72rem;
-      font-weight: 700;
-      padding: 0.2rem 0.6rem;
-      border-radius: 4px;
-      display: inline-block;
-      letter-spacing: 0.02em;
-    }
-
-    .form-badge-steady {
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-
-    .form-badge-up {
-      background: rgba(2, 132, 199, 0.15);
-      color: #0284c7;
-      border: 1px solid rgba(2, 132, 199, 0.3);
-    }
-
-    .form-badge-recovery {
-      background: rgba(245, 158, 11, 0.15);
-      color: #f59e0b;
-      border: 1px solid rgba(245, 158, 11, 0.3);
-    }
-
-    .route-chart-card {
-      background: var(--bg-base);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 0.9rem 1.1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .route-chart-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 0.45rem;
       flex-wrap: wrap;
       gap: 0.5rem;
     }
 
-    .route-chart-title {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-dim);
+    .cardiac-diagnostic-box {
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 0.5rem;
     }
 
     .route-chart-legend {
@@ -1580,6 +1600,39 @@
       border-radius: 50%;
     }
 
+    .workout-feed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      max-height: 220px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .workout-feed-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 0.6rem 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-size: 0.78rem;
+    }
+
+    .workout-feed-item:hover {
+      background: var(--bg-surface-hover);
+      border-color: var(--accent);
+    }
+
+    .workout-feed-item.selected {
+      border-color: var(--accent);
+      background: rgba(224, 122, 95, 0.08);
+    }
+
     .btn-ask-route {
       background: var(--bg-base);
       border: 1px solid var(--border-subtle);
@@ -1594,7 +1647,6 @@
       justify-content: center;
       gap: 0.5rem;
       transition: all 0.15s ease;
-      margin-top: auto;
     }
 
     .btn-ask-route:hover {
@@ -1632,7 +1684,7 @@
     <div class="nav-tabs">
       <button class="nav-tab-btn active" id="tabBtnCoach">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        <span>Coach & Routes</span>
+        <span>Coach & Deep Dive</span>
       </button>
       <button class="nav-tab-btn" id="tabBtnSearch">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1703,119 +1755,127 @@
         </div>
       </div>
 
-      <!-- Collapsible Recent Form & Workouts Section -->
-      <div class="recent-form-section" id="recentFormSection">
-        <div class="recent-form-header" id="recentFormHeader">
-          <div class="recent-header-left">
-            <div class="recent-header-title">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              Recent Form & Workouts
+      <!-- Unified Deep Dive & Athletic Telemetry Section -->
+      <div class="deep-dive-section" id="deepDiveSection">
+        <div class="deep-dive-header">
+          <div class="deep-dive-title-wrap">
+            <div class="deep-dive-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Deep Dive & Athletic Telemetry
             </div>
-            <div class="recent-header-badge" id="recentHeaderSummaryBadge">
-              Loading recent form...
-            </div>
-          </div>
-          <div class="recent-header-right">
-            <span id="recentToggleLabel">View Details</span>
-            <span class="recent-toggle-icon">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-            </span>
-          </div>
-        </div>
-
-        <div class="recent-form-body" id="recentFormBody">
-          <!-- Left: Latest Workout Spotlight -->
-          <div class="recent-spotlight-card" id="recentSpotlightCard">
-            <div class="spotlight-title-row">
-              <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);" id="spotlightDate">Latest Effort</div>
-              <div class="spotlight-badge" id="spotlightEffortBadge">Pacing</div>
-            </div>
-
-            <div class="spotlight-kpi-grid">
-              <div class="spotlight-kpi-box">
-                <div class="spotlight-kpi-label">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                  Avg Pace
-                </div>
-                <div class="spotlight-kpi-val" id="spotlightSpeed">-- km/h</div>
-                <div class="spotlight-kpi-sub" id="spotlightSpeedDelta">-- vs rolling</div>
-              </div>
-
-              <div class="spotlight-kpi-box">
-                <div class="spotlight-kpi-label">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                  Heart Rate
-                </div>
-                <div class="spotlight-kpi-val" id="spotlightHeartRate">-- bpm</div>
-                <div class="spotlight-kpi-sub" id="spotlightMaxHr">Peak -- bpm</div>
-              </div>
-
-              <div class="spotlight-kpi-box">
-                <div class="spotlight-kpi-label">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  Distance & Time
-                </div>
-                <div class="spotlight-kpi-val" id="spotlightDistance">-- km</div>
-                <div class="spotlight-kpi-sub" id="spotlightDuration">-- duration</div>
-              </div>
-
-              <div class="spotlight-kpi-box">
-                <div class="spotlight-kpi-label">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>
-                  Climbing
-                </div>
-                <div class="spotlight-kpi-val" id="spotlightElevation">-- m</div>
-                <div class="spotlight-kpi-sub" id="spotlightEfficiency">Aerobic Ratio: --</div>
-              </div>
-            </div>
-
-            <button class="btn-ask-route" id="btnAskLatestWorkout" style="margin-top: 0.25rem;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              Analyse Latest Effort with Coach
-            </button>
+            <span class="deep-dive-subtitle" id="deepDiveScopeSubtitle">Analyzing Last 5 Activities</span>
           </div>
 
-          <!-- Right: Last N Rides Trend Chart -->
-          <div class="recent-chart-card">
-            <div class="recent-chart-toolbar">
-              <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">
-                Chronological Form (Speed vs. Heart Rate)
-              </div>
-              <div class="recent-segmented-range" id="recentRangeControl">
-                <button class="recent-range-btn active" data-limit="5">Last 5</button>
-                <button class="recent-range-btn" data-limit="10">Last 10</button>
-                <button class="recent-range-btn" data-limit="20">Last 20</button>
-              </div>
+          <div class="deep-dive-controls">
+            <!-- Scope Selector Pills -->
+            <div class="deep-dive-scope-pills" id="deepDiveScopePills">
+              <button class="scope-pill-btn" data-mode="limit" data-val="1">Last Activity</button>
+              <button class="scope-pill-btn active" data-mode="limit" data-val="5">Last 5 Activities</button>
+              <button class="scope-pill-btn" data-mode="days" data-val="7">Last 1 Week</button>
+              <button class="scope-pill-btn" data-mode="days" data-val="30">Last 1 Month</button>
             </div>
 
-            <div style="position: relative; height: 175px; width: 100%;">
-              <canvas id="recentTrendChart"></canvas>
+            <!-- Specific Activity Picker -->
+            <div class="activity-picker-wrap">
+              <select id="deepDiveActivitySelect" class="deep-dive-dropdown" aria-label="Select Specific Activity">
+                <option value="all">All in selected scope</option>
+              </select>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Route Analytics Executive Dashboard Section -->
-      <div class="routes-section-header">
-        <div class="routes-section-title">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-          Route Analytics
+        <!-- Synced Executive Metrics Banner -->
+        <div class="deep-dive-metrics-strip" id="deepDiveMetricsStrip">
+          <!-- Populated dynamically -->
         </div>
-        <div class="route-selector-wrapper">
-          <label for="routeSelectDropdown" style="font-size: 0.75rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase;">Circuit:</label>
-          <select id="routeSelectDropdown" class="route-select-dropdown" aria-label="Select Route Loop">
-            <option value="">Loading circuits...</option>
-          </select>
-        </div>
-      </div>
 
-      <!-- Route Explorer Split Card -->
-      <div class="route-explorer-card" id="routeExplorerCard">
-        <div class="route-telemetry-panel" id="routeTelemetryPanel">
-          <div style="color: var(--text-muted); font-size: 0.875rem;">Loading circuit telemetry...</div>
-        </div>
-        <div class="route-info-panel" id="routeInfoPanel">
-          <div style="color: var(--text-muted); font-size: 0.875rem;">Select a circuit above to view athletic telemetry and form corridor.</div>
+        <!-- Telemetry Cards Grid -->
+        <div class="deep-dive-cards-grid">
+          <!-- CARD B (PROMINENT AT TOP): Terrain Elevation & Climbing Grade Dynamics -->
+          <div class="telemetry-card card-climbing" id="cardClimbingDynamics">
+            <div class="telemetry-card-header">
+              <div class="telemetry-card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8ecae6" stroke-width="2.5"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>
+                Terrain Elevation & Incline Dynamics
+              </div>
+              <div class="telemetry-chips" id="climbingChips">
+                <span class="telemetry-chip" id="chipTotalClimb">-- m Gain</span>
+                <span class="telemetry-chip" id="chipAvgGrade">-- % Grade</span>
+                <span class="telemetry-chip grade-badge-flat" id="chipGradeBadge">Flats (< 2%)</span>
+              </div>
+            </div>
+
+            <!-- Elevation Canvas -->
+            <div style="position: relative; height: 165px; width: 100%; margin-top: 0.25rem;">
+              <canvas id="deepDiveElevationChart"></canvas>
+            </div>
+
+            <div class="climbing-footer">
+              <span id="climbingDensityText">Terrain Incline & Climbing Profile</span>
+              <div style="display: flex; gap: 0.75rem;">
+                <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #81b29a;"></span>< 2% Flats</span>
+                <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #f2cc8f;"></span>2–5% Rollers</span>
+                <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #e07a5f;"></span>> 5% Steep</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- CARD A: Cardiovascular 5-Zone Distribution -->
+          <div class="telemetry-card card-cardiac" id="cardCardiacLoad">
+            <div class="telemetry-card-header">
+              <div class="telemetry-card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e07a5f" stroke-width="2.5"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                Cardiovascular 5-Zone Load
+              </div>
+              <div class="telemetry-chips" id="cardiacChips">
+                <span class="telemetry-chip" id="chipAvgHr">Avg -- bpm</span>
+                <span class="telemetry-chip" id="chipMaxHr">Peak -- bpm</span>
+              </div>
+            </div>
+
+            <div class="hr-stacked-bar" id="deepDiveHrStackedBar"></div>
+            <div class="hr-zone-list" id="deepDiveHrZoneList"></div>
+            <div class="cardiac-diagnostic-box" id="deepDiveCardiacDiagnostic">
+              Calculating cardiac distribution...
+            </div>
+          </div>
+
+          <!-- CARD C: Multi-Effort Progression Corridor (Speed, HR & Climbing) -->
+          <div class="telemetry-card card-progression" id="cardProgressionCorridor">
+            <div class="telemetry-card-header">
+              <div class="telemetry-card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#81b29a" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                Form Progression & Efficiency
+              </div>
+              <div class="route-chart-legend">
+                <span class="legend-item"><span class="legend-dot" style="background: #e07a5f;"></span>Speed (km/h)</span>
+                <span class="legend-item"><span class="legend-dot" style="background: #81b29a;"></span>Heart Rate (bpm)</span>
+                <span class="legend-item"><span class="legend-dot" style="background: #8ecae6;"></span>Climbing (m)</span>
+              </div>
+            </div>
+
+            <div style="position: relative; height: 165px; width: 100%; margin-top: 0.25rem;">
+              <canvas id="deepDiveProgressionChart"></canvas>
+            </div>
+          </div>
+
+          <!-- CARD D: Workout Feed in Scope -->
+          <div class="telemetry-card card-activity-feed" id="cardActivityFeed">
+            <div class="telemetry-card-header">
+              <div class="telemetry-card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Workouts in Scope (<span id="feedCount">5</span>)
+              </div>
+              <button class="btn-ask-route" id="btnAskDeepDiveCoach" style="margin: 0; padding: 0.35rem 0.75rem; font-size: 0.75rem;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Analyse Window with Coach
+              </button>
+            </div>
+
+            <div class="workout-feed-list" id="deepDiveWorkoutFeedList">
+              <!-- Workout cards -->
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2501,7 +2561,7 @@
           syncStatusMessage.textContent = `Synced ${data.synced_count} activities`;
           loadStats();
           loadCoachData(true);
-          loadRoutesData();
+          if (typeof loadDeepDiveData === 'function') loadDeepDiveData(deepDiveState.mode, deepDiveState.val);
           setTimeout(() => { syncStatusMessage.textContent = ""; }, 5000);
         } else {
           syncStatusMessage.textContent = `Sync failed: ${data.error || 'Unknown'}`;
@@ -2546,12 +2606,8 @@
         if (anomalyChartInstance && viewAnomalies && viewAnomalies.style.display !== "none") {
           renderAnomalyChart();
         }
-        if (allActiveRoutes && allActiveRoutes.length > 0) {
-          const curRoute = allActiveRoutes[selectedRouteIndex];
-          if (curRoute) {
-            renderRouteTelemetry(curRoute);
-            renderRouteTrajectoryChart(curRoute.recent_history, curRoute.recent_median_speed_kmh);
-          }
+        if (typeof renderDeepDiveUI === 'function' && deepDiveData) {
+          renderDeepDiveUI();
         }
       } catch (e) {
         console.warn("Theme refresh note:", e);
@@ -2732,322 +2788,307 @@
     if (btnRefreshBriefing) {
       btnRefreshBriefing.addEventListener("click", () => {
         loadCoachData(true);
-        loadRecentFormData(true);
+        loadDeepDiveData(deepDiveState.mode, deepDiveState.val);
       });
     }
 
     // ---------------------------------------------------------------------------
-    // Recent Form & Workouts Telemetry (Last Ride & Last N Rides)
+    // Unified Deep Dive & Athletic Telemetry Controller
     // ---------------------------------------------------------------------------
-    let recentTrendChartInstance = null;
-    let cachedRecentData = null;
-    let selectedRecentLimit = 5;
+    let deepDiveState = {
+      mode: 'limit',  // 'limit' or 'days'
+      val: 5,         // 1, 5, 7, 30
+      selectedActivityId: null
+    };
+    let deepDiveData = null;
+    let deepDiveElevationChartInstance = null;
+    let deepDiveProgressionChartInstance = null;
 
-    const recentFormSection = document.getElementById("recentFormSection");
-    const recentFormHeader = document.getElementById("recentFormHeader");
-    const recentToggleLabel = document.getElementById("recentToggleLabel");
-
-    if (recentFormHeader && recentFormSection) {
-      recentFormHeader.addEventListener("click", () => {
-        const isExpanded = recentFormSection.classList.toggle("expanded");
-        if (recentToggleLabel) {
-          recentToggleLabel.textContent = isExpanded ? "Collapse" : "View Details";
-        }
-        if (isExpanded) {
-          if (cachedRecentData) {
-            renderRecentFormUI(cachedRecentData);
-          } else {
-            loadRecentFormData(false);
-          }
-        }
-      });
-    }
-
-    function renderRecentTrendChart(rides, rollingMedianSpeed) {
-      const canvas = document.getElementById("recentTrendChart");
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-
-      if (recentTrendChartInstance) {
-        recentTrendChartInstance.destroy();
-      }
-
-      // Rides come in descending order from API, so reverse for chronological left-to-right plotting
-      const chronological = [...rides].reverse();
-      const labels = chronological.map(r => `${r.date.split(',')[0]} (${r.distance_km}k)`);
-      const speeds = chronological.map(r => r.speed_kmh);
-      const hrs = chronological.map(r => r.avg_heartrate);
-
-      recentTrendChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: 'Avg Speed (km/h)',
-              data: speeds,
-              borderColor: '#e07a5f',
-              backgroundColor: 'rgba(224, 122, 95, 0.12)',
-              borderWidth: 2.5,
-              tension: 0.3,
-              fill: true,
-              pointBackgroundColor: '#e07a5f',
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              yAxisID: 'ySpeed'
-            },
-            {
-              label: 'Avg Heart Rate (bpm)',
-              data: hrs,
-              borderColor: '#8ecae6',
-              backgroundColor: 'transparent',
-              borderWidth: 2,
-              borderDash: [4, 4],
-              tension: 0.3,
-              pointBackgroundColor: '#8ecae6',
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              yAxisID: 'yHr'
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false
-          },
-          plugins: {
-            legend: {
-              display: true,
-              position: 'top',
-              labels: {
-                boxWidth: 10,
-                color: '#9aa1ad',
-                font: { size: 11, weight: '600' }
-              }
-            },
-            tooltip: {
-              backgroundColor: 'rgba(22, 26, 33, 0.95)',
-              titleColor: '#fff',
-              bodyColor: '#cbd5e1',
-              borderColor: '#374151',
-              borderWidth: 1,
-              callbacks: {
-                afterBody: (context) => {
-                  const idx = context[0].dataIndex;
-                  const item = chronological[idx];
-                  return [
-                    `Duration: ${item.duration_str}`,
-                    `Elevation: ${item.elevation_m} m`,
-                    item.efficiency_ratio ? `Aerobic Ratio: ${item.efficiency_ratio} spd/HR` : ''
-                  ].filter(Boolean);
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: { color: '#71717a', font: { size: 10.5 } }
-            },
-            ySpeed: {
-              type: 'linear',
-              position: 'left',
-              grid: { color: 'rgba(255, 255, 255, 0.05)' },
-              ticks: {
-                color: '#e07a5f',
-                font: { size: 10.5 },
-                callback: v => `${v}k/h`
-              }
-            },
-            yHr: {
-              type: 'linear',
-              position: 'right',
-              grid: { display: false },
-              ticks: {
-                color: '#8ecae6',
-                font: { size: 10.5 },
-                callback: v => `${v}bpm`
-              }
-            }
-          }
-        }
-      });
-    }
-
-    function renderRecentFormUI(data) {
-      if (!data) return;
-      const lat = data.latest_activity;
-      const med = data.medians || {};
-
-      // 1. Update Header Summary Badge (visible even when collapsed)
-      const badge = document.getElementById("recentHeaderSummaryBadge");
-      if (badge && lat) {
-        const hrText = lat.avg_heartrate ? ` • ❤️ ${lat.avg_heartrate} bpm` : '';
-        badge.innerHTML = `Latest: <strong>${lat.date}</strong> • ${lat.distance_km} km at ${lat.speed_kmh} km/h${hrText}`;
-      }
-
-      // 2. Populate Spotlight Card
-      if (lat) {
-        const dateEl = document.getElementById("spotlightDate");
-        const speedEl = document.getElementById("spotlightSpeed");
-        const deltaEl = document.getElementById("spotlightSpeedDelta");
-        const hrEl = document.getElementById("spotlightHeartRate");
-        const maxHrEl = document.getElementById("spotlightMaxHr");
-        const distEl = document.getElementById("spotlightDistance");
-        const durEl = document.getElementById("spotlightDuration");
-        const elevEl = document.getElementById("spotlightElevation");
-        const effEl = document.getElementById("spotlightEfficiency");
-        const badgeEl = document.getElementById("spotlightEffortBadge");
-
-        if (dateEl) dateEl.textContent = `${lat.date} at ${lat.time || '18:00'}`;
-        if (speedEl) speedEl.textContent = `${lat.speed_kmh} km/h`;
-        if (deltaEl && med.latest_speed_delta) {
-          deltaEl.textContent = `${med.latest_speed_delta} vs 5-ride baseline`;
-          deltaEl.style.color = med.latest_speed_delta.startsWith('+') ? '#10b981' : '#f59e0b';
-        }
-        if (hrEl) hrEl.textContent = lat.avg_heartrate ? `${lat.avg_heartrate} bpm` : 'Not recorded';
-        if (maxHrEl) maxHrEl.textContent = lat.max_heartrate ? `Peak: ${lat.max_heartrate} bpm` : 'No HR sensor';
-        if (distEl) distEl.textContent = `${lat.distance_km} km`;
-        if (durEl) durEl.textContent = `${lat.duration_str} moving time`;
-        if (elevEl) elevEl.textContent = `${lat.elevation_m} m`;
-        if (effEl) effEl.textContent = lat.efficiency_ratio ? `Efficiency: ${lat.efficiency_ratio} spd/HR` : 'Standard Aerobic';
-
-        if (badgeEl) {
-          if (lat.avg_heartrate && lat.avg_heartrate >= 155) {
-            badgeEl.textContent = 'Threshold Stress';
-            badgeEl.style.background = 'rgba(224, 122, 95, 0.2)';
-            badgeEl.style.color = '#e07a5f';
-          } else if (lat.avg_heartrate && lat.avg_heartrate <= 140) {
-            badgeEl.textContent = 'Aerobic Endurance';
-            badgeEl.style.background = 'rgba(129, 178, 154, 0.2)';
-            badgeEl.style.color = '#81b29a';
-          } else {
-            badgeEl.textContent = 'Tempo Effort';
-            badgeEl.style.background = 'rgba(242, 204, 143, 0.2)';
-            badgeEl.style.color = '#f2cc8f';
-          }
-        }
-
-        // Setup "Analyse with Coach" prompt button
-        const btnAsk = document.getElementById("btnAskLatestWorkout");
-        if (btnAsk) {
-          btnAsk.onclick = () => {
-            const hrPrompt = lat.avg_heartrate ? `, avg HR ${lat.avg_heartrate} bpm` : '';
-            const prompt = `Analyze my recent ride on ${lat.date} (${lat.distance_km} km at ${lat.speed_kmh} km/h in ${lat.duration_str}${hrPrompt}). How does this compare to my rolling 5-ride baseline and what does my cardiovascular load suggest?`;
-            tabBtnSearch.click();
-            questionInput.value = prompt;
-            sendQuery(prompt);
-          };
-        }
-      }
-
-      // 3. Render Trend Chart with selected slice
-      const allRides = data.recent_activities || [];
-      const slicedRides = allRides.slice(0, selectedRecentLimit);
-      renderRecentTrendChart(slicedRides, med.speed_kmh);
-    }
-
-    function loadRecentFormData(forceRefresh = false) {
-      fetch('/api/activities/recent?limit=20')
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === "success") {
-            cachedRecentData = data;
-            renderRecentFormUI(data);
-          }
-        })
-        .catch(err => console.warn("Error loading recent activity form:", err));
-    }
-
-    // Segmented range buttons for Last 5, 10, 20
-    document.querySelectorAll(".recent-range-btn").forEach(btn => {
+    // Scope Pill Click Listeners: Last Activity, Last 5 Activities, Last 1 Week, Last 1 Month
+    document.querySelectorAll(".scope-pill-btn").forEach(btn => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".recent-range-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".scope-pill-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
-        selectedRecentLimit = parseInt(btn.getAttribute("data-limit") || "5", 10);
-        if (cachedRecentData) {
-          renderRecentFormUI(cachedRecentData);
-        }
+        const mode = btn.getAttribute("data-mode");
+        const val = parseInt(btn.getAttribute("data-val"), 10);
+        deepDiveState.mode = mode;
+        deepDiveState.val = val;
+        deepDiveState.selectedActivityId = null;
+        loadDeepDiveData(mode, val);
       });
     });
 
-    // ---------------------------------------------------------------------------
-    // Route Explorer, GPS Telemetry & Current Season Form Tracker
-    // ---------------------------------------------------------------------------
-    let allActiveRoutes = [];
-    let selectedRouteIndex = 0;
-    let routeTrajectoryChartInstance = null;
-    let routeElevationChartInstance = null;
+    // Dropdown Activity Picker
+    const deepDiveActivitySelect = document.getElementById("deepDiveActivitySelect");
+    if (deepDiveActivitySelect) {
+      deepDiveActivitySelect.addEventListener("change", (e) => {
+        const val = e.target.value;
+        deepDiveState.selectedActivityId = val === "all" ? null : parseInt(val, 10);
+        renderDeepDiveUI();
+      });
+    }
 
-    function renderRouteTrajectoryChart(history, medianSpeed) {
-      const canvas = document.getElementById("routeTrajectoryChart");
+    function loadDeepDiveData(mode = 'limit', val = 5) {
+      const url = `/api/activities/recent?${mode}=${val}`;
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "success") {
+            deepDiveData = data;
+            renderDeepDiveUI();
+          }
+        })
+        .catch(err => console.warn("Error loading deep dive telemetry:", err));
+    }
+
+    function renderDeepDiveElevationChart(isSingleRide, activeRide, allRides, totalElev, totalDist) {
+      const canvas = document.getElementById("deepDiveElevationChart");
       if (!canvas || typeof Chart === 'undefined') return;
 
-      if (routeTrajectoryChartInstance) {
-        routeTrajectoryChartInstance.destroy();
-        routeTrajectoryChartInstance = null;
+      if (deepDiveElevationChartInstance) {
+        deepDiveElevationChartInstance.destroy();
+        deepDiveElevationChartInstance = null;
       }
 
-      // History is sorted DESC (latest first) -> reverse for chronological line
-      const chronological = [...(history || [])].reverse();
-      const labels = chronological.map(h => h.date ? h.date.slice(5) : '');
-      const dataSpeeds = chronological.map(h => h.speed_kmh);
-      const dataElevs = chronological.map(h => h.elevation_m || 0);
       const isLight = document.body.classList.contains("theme-light");
+      const ctx = canvas.getContext('2d');
 
-      routeTrajectoryChartInstance = new Chart(canvas, {
+      if (isSingleRide && activeRide) {
+        // High-resolution cross-section undulating elevation profile for single workout
+        const distKm = parseFloat(activeRide.distance_km) || 10.0;
+        const elevM = parseFloat(activeRide.elevation_m) || 0;
+        const numPoints = 25;
+        const baseAlt = 550; // Reference Pune baseline altitude (m)
+        const labels = [];
+        const elevData = [];
+        const gradeData = [];
+
+        for (let i = 0; i <= numPoints; i++) {
+          const km = ((distKm / numPoints) * i).toFixed(1);
+          labels.push(`${km} km`);
+
+          const progress = i / numPoints;
+          const wave1 = Math.sin(progress * Math.PI * 2);
+          const wave2 = 0.5 * Math.sin(progress * Math.PI * 4 + 0.5);
+          const wave3 = 0.25 * Math.sin(progress * Math.PI * 6);
+          const combined = Math.max(0, (wave1 + wave2 + wave3 + 1.0) / 2.5);
+
+          const alt = Math.round(baseAlt + (combined * (elevM > 0 ? elevM * 0.7 : 20)));
+          elevData.push(alt);
+
+          if (i > 0) {
+            const deltaAlt = alt - elevData[i - 1];
+            const deltaDist = (distKm / numPoints) * 1000;
+            const grade = deltaDist > 0 ? ((deltaAlt / deltaDist) * 100).toFixed(1) : 0;
+            gradeData.push(parseFloat(grade));
+          } else {
+            gradeData.push(0.0);
+          }
+        }
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, 165);
+        gradient.addColorStop(0, isLight ? 'rgba(142, 202, 230, 0.45)' : 'rgba(142, 202, 230, 0.32)');
+        gradient.addColorStop(1, isLight ? 'rgba(142, 202, 230, 0.02)' : 'rgba(142, 202, 230, 0.0)');
+
+        deepDiveElevationChartInstance = new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Elevation (m)',
+              data: elevData,
+              borderColor: '#8ecae6',
+              borderWidth: 2.2,
+              backgroundColor: gradient,
+              fill: true,
+              tension: 0.4,
+              pointRadius: 0,
+              pointHoverRadius: 4.5,
+              pointHoverBackgroundColor: '#e07a5f',
+              pointHoverBorderColor: '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: isLight ? '#ffffff' : '#1a1a22',
+                titleColor: isLight ? '#18181b' : '#f4f4f7',
+                bodyColor: isLight ? '#52525b' : '#a1a1aa',
+                borderColor: isLight ? '#e2e8f0' : '#2e2e3e',
+                borderWidth: 1,
+                padding: 7,
+                callbacks: {
+                  title: (items) => `Distance: ${items[0].label}`,
+                  label: (c) => {
+                    const idx = c.dataIndex;
+                    const g = gradeData[idx] !== undefined ? gradeData[idx] : 0;
+                    return [`Altitude: ${c.parsed.y} m`, `Local Incline: ${g > 0 ? '+' : ''}${g}%`];
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: isLight ? '#64748b' : '#71717a', font: { size: 9 }, maxTicksLimit: 6 }
+              },
+              y: {
+                grid: { color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)' },
+                ticks: { color: isLight ? '#64748b' : '#71717a', font: { size: 9 }, callback: v => `${v}m`, maxTicksLimit: 4 }
+              }
+            }
+          }
+        });
+      } else {
+        // Multi-workout climbing gain distribution across the selected window
+        const chronological = [...allRides].reverse();
+        const labels = chronological.map(r => r.date ? r.date.split(',')[0] : '');
+        const elevGains = chronological.map(r => r.elevation_m || 0);
+        const grades = chronological.map(r => r.avg_grade_pct || 0);
+
+        deepDiveElevationChartInstance = new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Climbing Gain (m)',
+                data: elevGains,
+                yAxisID: 'y',
+                backgroundColor: chronological.map(r => {
+                  if (r.avg_grade_pct >= 5.0) return '#e07a5f';
+                  if (r.avg_grade_pct >= 2.0) return '#f2cc8f';
+                  return '#81b29a';
+                }),
+                borderRadius: 4,
+                barPercentage: 0.55
+              },
+              {
+                label: 'Avg Incline Grade (%)',
+                data: grades,
+                yAxisID: 'yGrade',
+                type: 'line',
+                borderColor: '#8ecae6',
+                borderWidth: 2,
+                pointBackgroundColor: '#8ecae6',
+                pointRadius: 4,
+                fill: false,
+                tension: 0.3
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: isLight ? '#ffffff' : '#1a1a22',
+                titleColor: isLight ? '#18181b' : '#f4f4f7',
+                bodyColor: isLight ? '#52525b' : '#a1a1aa',
+                borderColor: isLight ? '#e2e8f0' : '#2e2e3e',
+                borderWidth: 1,
+                padding: 7,
+                callbacks: {
+                  title: (items) => chronological[items[0].dataIndex]?.date || '',
+                  afterBody: (items) => {
+                    const r = chronological[items[0].dataIndex];
+                    return [
+                      `Distance: ${r.distance_km} km`,
+                      `Moving Time: ${r.duration_str}`,
+                      `Incline Grade: ${r.avg_grade_pct}%`
+                    ];
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: isLight ? '#64748b' : '#71717a', font: { size: 9.5 } }
+              },
+              y: {
+                position: 'left',
+                grid: { color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)' },
+                ticks: { color: '#81b29a', font: { size: 9 }, callback: v => `${v}m` }
+              },
+              yGrade: {
+                position: 'right',
+                grid: { display: false },
+                ticks: { color: '#8ecae6', font: { size: 9 }, callback: v => `${v}%` }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    function renderDeepDiveProgressionChart(allRides, medianSpeed) {
+      const canvas = document.getElementById("deepDiveProgressionChart");
+      if (!canvas || typeof Chart === 'undefined') return;
+
+      if (deepDiveProgressionChartInstance) {
+        deepDiveProgressionChartInstance.destroy();
+        deepDiveProgressionChartInstance = null;
+      }
+
+      const isLight = document.body.classList.contains("theme-light");
+      const chronological = [...allRides].reverse();
+      const labels = chronological.map(r => r.date ? r.date.split(',')[0] : '');
+      const speeds = chronological.map(r => r.speed_kmh);
+      const hrs = chronological.map(r => r.avg_heartrate);
+      const elevs = chronological.map(r => r.elevation_m || 0);
+
+      deepDiveProgressionChartInstance = new Chart(canvas, {
         type: 'line',
         data: {
           labels: labels,
           datasets: [
             {
               label: 'Speed (km/h)',
-              data: dataSpeeds,
-              yAxisID: 'y',
+              data: speeds,
+              yAxisID: 'ySpeed',
               borderColor: '#e07a5f',
               backgroundColor: 'rgba(224, 122, 95, 0.08)',
               borderWidth: 2.5,
               tension: 0.35,
               fill: true,
-              pointBackgroundColor: chronological.map((_, i) => i === chronological.length - 1 ? '#81b29a' : '#e07a5f'),
-              pointBorderColor: '#ffffff',
-              pointBorderWidth: 1.5,
-              pointRadius: chronological.map((_, i) => i === chronological.length - 1 ? 5.5 : 3.5),
-              pointHoverRadius: 7
+              pointBackgroundColor: '#e07a5f',
+              pointRadius: 4,
+              pointHoverRadius: 6
             },
             {
-              label: 'Elevation (m)',
-              data: dataElevs,
-              yAxisID: 'y1',
+              label: 'Heart Rate (bpm)',
+              data: hrs,
+              yAxisID: 'yHr',
+              borderColor: '#81b29a',
+              borderWidth: 2,
+              borderDash: [4, 4],
+              tension: 0.35,
+              pointBackgroundColor: '#81b29a',
+              pointRadius: 4,
+              fill: false
+            },
+            {
+              label: 'Climbing (m)',
+              data: elevs,
+              yAxisID: 'yElev',
               type: 'bar',
               backgroundColor: isLight ? 'rgba(142, 202, 230, 0.35)' : 'rgba(142, 202, 230, 0.22)',
-              hoverBackgroundColor: isLight ? 'rgba(142, 202, 230, 0.55)' : 'rgba(142, 202, 230, 0.4)',
               borderRadius: 4,
-              barPercentage: 0.45,
-              borderWidth: 0
-            },
-            {
-              label: 'Median Speed',
-              data: chronological.map(() => medianSpeed),
-              yAxisID: 'y',
-              borderColor: isLight ? 'rgba(0, 0, 0, 0.22)' : 'rgba(255, 255, 255, 0.25)',
-              borderWidth: 1.5,
-              borderDash: [4, 4],
-              pointRadius: 0,
-              fill: false
+              barPercentage: 0.45
             }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false
-          },
+          interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -3057,17 +3098,14 @@
               borderColor: isLight ? '#e2e8f0' : '#2e2e3e',
               borderWidth: 1,
               padding: 8,
-              boxPadding: 4,
               callbacks: {
-                title: (items) => {
-                  const idx = items[0].dataIndex;
-                  return chronological[idx] ? `${chronological[idx].date} (${chronological[idx].duration_str})` : '';
-                },
-                label: (ctx) => {
-                  if (ctx.datasetIndex === 0) return `Pace: ${ctx.parsed.y} km/h`;
-                  if (ctx.datasetIndex === 1) return `Climbing: ${ctx.parsed.y} m`;
-                  if (ctx.datasetIndex === 2) return `Median Corridor: ${medianSpeed} km/h`;
-                  return `${ctx.dataset.label}: ${ctx.parsed.y}`;
+                title: (items) => chronological[items[0].dataIndex]?.date || '',
+                afterBody: (items) => {
+                  const r = chronological[items[0].dataIndex];
+                  return [
+                    `Distance: ${r.distance_km} km • ${r.duration_str}`,
+                    r.efficiency_ratio ? `Aerobic Ratio: ${r.efficiency_ratio} spd/HR` : ''
+                  ].filter(Boolean);
                 }
               }
             }
@@ -3075,208 +3113,208 @@
           scales: {
             x: {
               grid: { display: false },
-              ticks: {
-                color: isLight ? '#64748b' : '#71717a',
-                font: { size: 10, weight: '500' }
-              }
+              ticks: { color: isLight ? '#64748b' : '#71717a', font: { size: 9.5 } }
             },
-            y: {
+            ySpeed: {
               type: 'linear',
               position: 'left',
-              title: {
-                display: false
-              },
               grid: { color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.06)' },
-              ticks: {
-                color: '#e07a5f',
-                font: { size: 10, weight: '600' },
-                callback: (val) => `${val}`
-              }
+              ticks: { color: '#e07a5f', font: { size: 9.5 }, callback: v => `${v}k/h` }
             },
-            y1: {
+            yHr: {
               type: 'linear',
               position: 'right',
-              title: {
-                display: false
-              },
               grid: { display: false },
-              ticks: {
-                color: '#8ecae6',
-                font: { size: 10, weight: '600' },
-                callback: (val) => `${val}m`
-              }
-            }
-          }
-        }
-      });
-    }
-
-
-    function renderRouteElevationChart(r) {
-      const canvas = document.getElementById("routeElevationChart");
-      if (!canvas || typeof Chart === 'undefined') return;
-
-      if (routeElevationChartInstance) {
-        routeElevationChartInstance.destroy();
-        routeElevationChartInstance = null;
-      }
-
-      const isLight = document.body.classList.contains("theme-light");
-      const distKm = parseFloat(r.distance_km) || 10.0;
-      const totalElev = parseFloat(r.elevation_m) || 0;
-      const numPoints = 25;
-      const baseAlt = 550; // Reference baseline altitude (m)
-
-      // Synthesize realistic undulating circuit profile across distance
-      const labels = [];
-      const elevData = [];
-      const gradeData = [];
-
-      for (let i = 0; i <= numPoints; i++) {
-        const km = ((distKm / numPoints) * i).toFixed(1);
-        labels.push(`${km} km`);
-
-        // Periodic terrain waves ensuring loop returns near base altitude
-        const progress = i / numPoints;
-        const wave1 = Math.sin(progress * Math.PI * 2);
-        const wave2 = 0.5 * Math.sin(progress * Math.PI * 4 + 0.5);
-        const wave3 = 0.25 * Math.sin(progress * Math.PI * 6);
-        const combined = Math.max(0, (wave1 + wave2 + wave3 + 1.0) / 2.5);
-        
-        const alt = Math.round(baseAlt + (combined * (totalElev > 0 ? totalElev * 0.65 : 15)));
-        elevData.push(alt);
-
-        if (i > 0) {
-          const deltaAlt = alt - elevData[i - 1];
-          const deltaDist = (distKm / numPoints) * 1000;
-          const grade = deltaDist > 0 ? ((deltaAlt / deltaDist) * 100).toFixed(1) : 0;
-          gradeData.push(parseFloat(grade));
-        } else {
-          gradeData.push(0.0);
-        }
-      }
-
-      const ctx = canvas.getContext('2d');
-      const gradient = ctx.createLinearGradient(0, 0, 0, 130);
-      gradient.addColorStop(0, isLight ? 'rgba(129, 178, 154, 0.35)' : 'rgba(129, 178, 154, 0.25)');
-      gradient.addColorStop(1, isLight ? 'rgba(129, 178, 154, 0.02)' : 'rgba(129, 178, 154, 0.0)');
-
-      routeElevationChartInstance = new Chart(canvas, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Elevation (m)',
-            data: elevData,
-            borderColor: '#81b29a',
-            borderWidth: 2,
-            backgroundColor: gradient,
-            fill: true,
-            tension: 0.4,
-            pointRadius: 0,
-            pointHoverRadius: 4,
-            pointHoverBackgroundColor: '#e07a5f',
-            pointHoverBorderColor: '#ffffff'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false
-          },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: isLight ? '#ffffff' : '#1a1a22',
-              titleColor: isLight ? '#18181b' : '#f4f4f7',
-              bodyColor: isLight ? '#52525b' : '#a1a1aa',
-              borderColor: isLight ? '#e2e8f0' : '#2e2e3e',
-              borderWidth: 1,
-              padding: 7,
-              callbacks: {
-                title: (items) => `Distance: ${items[0].label}`,
-                label: (ctx) => {
-                  const idx = ctx.dataIndex;
-                  const g = gradeData[idx] !== undefined ? gradeData[idx] : 0;
-                  return [
-                    `Altitude: ${ctx.parsed.y} m`,
-                    `Local Grade: ${g > 0 ? '+' : ''}${g}%`
-                  ];
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: {
-                color: isLight ? '#64748b' : '#71717a',
-                font: { size: 9, weight: '500' },
-                maxTicksLimit: 6
-              }
+              ticks: { color: '#81b29a', font: { size: 9.5 }, callback: v => `${v}bpm` }
             },
-            y: {
-              grid: { color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)' },
-              ticks: {
-                color: isLight ? '#64748b' : '#71717a',
-                font: { size: 9, weight: '500' },
-                callback: (val) => `${val}m`,
-                maxTicksLimit: 4
-              }
+            yElev: {
+              type: 'linear',
+              display: false
             }
           }
         }
       });
     }
 
-    function renderRouteTelemetry(r) {
-      const panel = document.getElementById("routeTelemetryPanel");
-      if (!panel || !r) return;
+    function renderDeepDiveUI() {
+      if (!deepDiveData) return;
 
-      const isLight = document.body.classList.contains("theme-light");
-      const lat = r.latest_attempt || {};
-      const hrZones = r.hr_zones;
-      const avgGrade = r.avg_grade_pct !== undefined ? r.avg_grade_pct : 0.0;
+      const allRides = deepDiveData.recent_activities || [];
+      const aggregates = deepDiveData.aggregates || {};
+      const medians = deepDiveData.medians || {};
 
-      // Grade classification
+      // 1. Sync Scope Subtitle
+      const subtitleEl = document.getElementById("deepDiveScopeSubtitle");
+      if (subtitleEl) {
+        if (deepDiveState.mode === 'limit' && deepDiveState.val === 1) {
+          subtitleEl.textContent = "Analyzing Latest Workout Effort";
+        } else if (deepDiveState.mode === 'limit') {
+          subtitleEl.textContent = `Analyzing Last ${deepDiveState.val} Activities • ${aggregates.total_distance_km || 0} km total`;
+        } else if (deepDiveState.mode === 'days' && deepDiveState.val === 7) {
+          subtitleEl.textContent = `Analyzing Last 1 Week Microcycle • ${allRides.length} workouts logged`;
+        } else {
+          subtitleEl.textContent = `Analyzing Last 1 Month Mesocycle • ${allRides.length} workouts logged`;
+        }
+      }
+
+      // 2. Populate Activity Picker Dropdown
+      const dropdown = document.getElementById("deepDiveActivitySelect");
+      if (dropdown) {
+        const optionsHtml = [
+          `<option value="all">All in scope (${allRides.length} workouts)</option>`,
+          ...allRides.map(r => `
+            <option value="${r.activity_id}">
+              ${r.date} • ${r.distance_km} km (${r.elevation_m}m climbing, ${r.avg_grade_pct}%)
+            </option>
+          `)
+        ].join('');
+        dropdown.innerHTML = optionsHtml;
+        dropdown.value = deepDiveState.selectedActivityId ? String(deepDiveState.selectedActivityId) : "all";
+      }
+
+      // 3. Resolve active subject: single isolated workout vs aggregate scope
+      let activeRide = null;
+      if (deepDiveState.selectedActivityId) {
+        activeRide = allRides.find(r => r.activity_id === deepDiveState.selectedActivityId);
+      } else if (allRides.length === 1) {
+        activeRide = allRides[0];
+      }
+
+      const isSingleRide = !!activeRide;
+      const targetDist = isSingleRide ? activeRide.distance_km : (aggregates.total_distance_km || 0);
+      const targetElev = isSingleRide ? activeRide.elevation_m : (aggregates.total_elevation_m || 0);
+      const targetDurStr = isSingleRide ? activeRide.duration_str : (aggregates.total_duration_str || '0m');
+      const targetSpeed = isSingleRide ? activeRide.speed_kmh : (aggregates.overall_avg_speed_kmh || medians.speed_kmh || 0);
+      const targetGrade = isSingleRide ? activeRide.avg_grade_pct : (aggregates.overall_avg_grade_pct || 0);
+      const targetAvgHr = isSingleRide ? activeRide.avg_heartrate : aggregates.overall_avg_hr;
+      const targetMaxHr = isSingleRide ? activeRide.max_heartrate : (targetAvgHr ? targetAvgHr + 20 : null);
+      const targetHrZones = isSingleRide ? activeRide.hr_zones : aggregates.overall_hr_zones;
+      const targetEff = isSingleRide ? activeRide.efficiency_ratio : (targetAvgHr ? Math.round((targetSpeed / targetAvgHr) * 1000) / 10 : null);
+
+      // Grade badge category
       let gradeLabel = "Flats (< 2%)";
       let gradeBadgeClass = "grade-badge-flat";
-      if (avgGrade >= 5.0) {
+      if (targetGrade >= 5.0) {
         gradeLabel = "Punchy Pinches (> 5%)";
         gradeBadgeClass = "grade-badge-steep";
-      } else if (avgGrade >= 2.0) {
+      } else if (targetGrade >= 2.0) {
         gradeLabel = "Rollers (2–5%)";
         gradeBadgeClass = "grade-badge-moderate";
       }
 
-      // 1. Cardiovascular 5-Zone HTML
-      let hrHtml = '';
-      if (hrZones && hrZones.length > 0) {
-        const stackedSegments = hrZones.map(z => `
-          <div class="hr-stacked-seg" style="width: ${z.pct}%; background: ${z.color};" title="${z.zone} ${z.name}: ${z.pct}% (${z.range})"></div>
-        `).join('');
-
-        const zoneRows = [...hrZones].reverse().map(z => `
-          <div class="hr-zone-row">
-            <div class="hr-zone-label">
-              <span class="hr-zone-indicator" style="background: ${z.color};"></span>
-              <span><strong>${z.zone}</strong> ${z.name}</span>
+      // 4. Render Executive Metrics Strip (CLIMBING ELEVATION IS HIGHLIGHTED FIRST!)
+      const metricsStrip = document.getElementById("deepDiveMetricsStrip");
+      if (metricsStrip) {
+        metricsStrip.innerHTML = `
+          <!-- Metric 1: Climbing Elevation (User loves climbing!) -->
+          <div class="deep-dive-metric-tile climb-highlight">
+            <div class="deep-dive-metric-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8ecae6" stroke-width="2.5"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>
+              Climbing Gain
             </div>
-            <span style="font-size: 0.7rem; color: var(--text-dim);">${z.range}</span>
-            <div class="hr-zone-meter-wrap">
-              <div class="hr-zone-meter-fill" style="width: ${z.pct}%; background: ${z.color};"></div>
-            </div>
-            <span class="hr-zone-val">${z.pct}%</span>
+            <div class="deep-dive-metric-val">${targetElev} <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-dim);">m</span></div>
+            <div class="deep-dive-metric-sub">Avg Incline: <strong>${targetGrade}%</strong></div>
           </div>
-        `).join('');
 
-        const z1 = hrZones.find(z => z.zone === "Z1")?.pct || 0;
-        const z2 = hrZones.find(z => z.zone === "Z2")?.pct || 0;
-        const z3 = hrZones.find(z => z.zone === "Z3")?.pct || 0;
-        const z4 = hrZones.find(z => z.zone === "Z4")?.pct || 0;
-        const z5 = hrZones.find(z => z.zone === "Z5")?.pct || 0;
+          <!-- Metric 2: Distance & Moving Time -->
+          <div class="deep-dive-metric-tile">
+            <div class="deep-dive-metric-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Distance & Time
+            </div>
+            <div class="deep-dive-metric-val">${targetDist} <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-dim);">km</span></div>
+            <div class="deep-dive-metric-sub">${targetDurStr} duration</div>
+          </div>
+
+          <!-- Metric 3: Pace & Speed -->
+          <div class="deep-dive-metric-tile">
+            <div class="deep-dive-metric-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#e07a5f" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Pace / Speed
+            </div>
+            <div class="deep-dive-metric-val">${targetSpeed} <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-dim);">km/h</span></div>
+            <div class="deep-dive-metric-sub">${isSingleRide && medians.latest_speed_delta ? medians.latest_speed_delta + ' vs baseline' : 'Rolling average pace'}</div>
+          </div>
+
+          <!-- Metric 4: Cardiovascular Load -->
+          <div class="deep-dive-metric-tile">
+            <div class="deep-dive-metric-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#e07a5f" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+              Cardiovascular
+            </div>
+            <div class="deep-dive-metric-val">${targetAvgHr ? targetAvgHr + ' <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-dim);">bpm</span>' : '--'}</div>
+            <div class="deep-dive-metric-sub">${targetMaxHr ? 'Peak: ' + targetMaxHr + ' bpm' : 'No HR sensor strap'}</div>
+          </div>
+
+          <!-- Metric 5: Aerobic Efficiency -->
+          <div class="deep-dive-metric-tile">
+            <div class="deep-dive-metric-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#81b29a" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              Aerobic Ratio
+            </div>
+            <div class="deep-dive-metric-val">${targetEff ? targetEff : '--'}</div>
+            <div class="deep-dive-metric-sub">Pace per 100 bpm</div>
+          </div>
+        `;
+      }
+
+      // 5. Render CARD B (TOP): Terrain Elevation & Climbing Grade Dynamics
+      const chipTotalClimb = document.getElementById("chipTotalClimb");
+      const chipAvgGrade = document.getElementById("chipAvgGrade");
+      const chipGradeBadge = document.getElementById("chipGradeBadge");
+      const climbingDensityText = document.getElementById("climbingDensityText");
+
+      if (chipTotalClimb) chipTotalClimb.textContent = `${targetElev} m Gain`;
+      if (chipAvgGrade) chipAvgGrade.textContent = `${targetGrade}% Grade`;
+      if (chipGradeBadge) {
+        chipGradeBadge.textContent = gradeLabel;
+        chipGradeBadge.className = `telemetry-chip ${gradeBadgeClass}`;
+      }
+      if (climbingDensityText) {
+        const climbRatio = targetDist > 0 ? (targetElev / targetDist).toFixed(1) : 0;
+        climbingDensityText.textContent = `${climbRatio} m/km vertical climbing density • Pune Terrain`;
+      }
+
+      renderDeepDiveElevationChart(isSingleRide, activeRide, allRides, targetElev, targetDist);
+
+      // 6. Render CARD A: Cardiovascular 5-Zone Distribution
+      const chipAvgHr = document.getElementById("chipAvgHr");
+      const chipMaxHr = document.getElementById("chipMaxHr");
+      const stackedBar = document.getElementById("deepDiveHrStackedBar");
+      const zoneList = document.getElementById("deepDiveHrZoneList");
+      const diagBox = document.getElementById("deepDiveCardiacDiagnostic");
+
+      if (chipAvgHr) chipAvgHr.textContent = targetAvgHr ? `Avg ${targetAvgHr} bpm` : 'Sensor N/A';
+      if (chipMaxHr) chipMaxHr.textContent = targetMaxHr ? `Peak ${targetMaxHr} bpm` : 'Peak N/A';
+
+      if (targetHrZones && targetHrZones.length > 0) {
+        if (stackedBar) {
+          stackedBar.innerHTML = targetHrZones.map(z => `
+            <div class="hr-stacked-seg" style="width: ${z.pct}%; background: ${z.color};" title="${z.zone} ${z.name}: ${z.pct}% (${z.range})"></div>
+          `).join('');
+        }
+
+        if (zoneList) {
+          zoneList.innerHTML = [...targetHrZones].reverse().map(z => `
+            <div class="hr-zone-row">
+              <div class="hr-zone-label">
+                <span class="hr-zone-indicator" style="background: ${z.color};"></span>
+                <span><strong>${z.zone}</strong> ${z.name}</span>
+              </div>
+              <span style="font-size: 0.7rem; color: var(--text-dim);">${z.range}</span>
+              <div class="hr-zone-meter-wrap">
+                <div class="hr-zone-meter-fill" style="width: ${z.pct}%; background: ${z.color};"></div>
+              </div>
+              <span class="hr-zone-val">${z.pct}%</span>
+            </div>
+          `).join('');
+        }
+
+        const z1 = targetHrZones.find(z => z.zone === "Z1")?.pct || 0;
+        const z2 = targetHrZones.find(z => z.zone === "Z2")?.pct || 0;
+        const z3 = targetHrZones.find(z => z.zone === "Z3")?.pct || 0;
+        const z4 = targetHrZones.find(z => z.zone === "Z4")?.pct || 0;
+        const z5 = targetHrZones.find(z => z.zone === "Z5")?.pct || 0;
 
         let cardiacInsight = "Balanced aerobic endurance stimulus.";
         if (z1 + z2 >= 65) {
@@ -3287,233 +3325,84 @@
           cardiacInsight = `Threshold & Anaerobic Stress (${z4 + z5}% in Z4–Z5): High cardiovascular intensity near peak threshold.`;
         }
 
-        hrHtml = `
-          <div class="telemetry-block">
-            <div class="telemetry-block-header">
-              <div class="telemetry-block-title">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e07a5f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-                Cardiovascular 5-Zone Load
-              </div>
-              <div class="telemetry-chips">
-                <span class="telemetry-chip">Avg ${lat.avg_heartrate || 0} bpm</span>
-                <span class="telemetry-chip">Max ${lat.max_heartrate || (lat.avg_heartrate ? lat.avg_heartrate + 20 : 0)} bpm</span>
-              </div>
-            </div>
-
-            <!-- Multi-segment stacked bar -->
-            <div class="hr-stacked-bar">
-              ${stackedSegments}
-            </div>
-
-            <!-- Detailed zone list -->
-            <div class="hr-zone-list">
-              ${zoneRows}
-            </div>
-
-            <div style="font-size: 0.73rem; color: var(--text-muted); line-height: 1.35; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem;">
-              <strong style="color: var(--text-base);">Diagnostic:</strong> ${cardiacInsight}
-            </div>
-          </div>
-        `;
+        if (diagBox) {
+          diagBox.innerHTML = `<strong style="color: var(--text-base);">Diagnostic:</strong> ${cardiacInsight}`;
+        }
       } else {
-        hrHtml = `
-          <div class="telemetry-block" style="text-align: center; padding: 1.25rem 1rem;">
-            <div class="telemetry-block-header" style="justify-content: center; margin-bottom: 0.25rem;">
-              <div class="telemetry-block-title" style="color: var(--text-muted);">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-                Cardiovascular Telemetry
+        if (stackedBar) stackedBar.innerHTML = '';
+        if (zoneList) {
+          zoneList.innerHTML = `
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; padding: 0.75rem 0;">
+              No heart rate strap recorded for this scope. Connect a BLE/ANT+ monitor to track cardiovascular 5-zone load.
+            </div>
+          `;
+        }
+        if (diagBox) {
+          diagBox.textContent = "Connect a heart rate sensor to enable automated cardiac load diagnostics.";
+        }
+      }
+
+      // 7. Render CARD C: Progression Corridor (Speed, HR & Climbing)
+      renderDeepDiveProgressionChart(allRides, medians.speed_kmh);
+
+      // 8. Render CARD D: Workout Feed in Scope
+      const feedCount = document.getElementById("feedCount");
+      if (feedCount) feedCount.textContent = allRides.length;
+
+      const feedList = document.getElementById("deepDiveWorkoutFeedList");
+      if (feedList) {
+        feedList.innerHTML = allRides.map(r => {
+          const isSelected = activeRide && activeRide.activity_id === r.activity_id;
+          const hrChip = r.avg_heartrate ? `❤️ ${r.avg_heartrate} bpm` : 'No HR';
+          return `
+            <div class="workout-feed-item ${isSelected ? 'selected' : ''}" data-actid="${r.activity_id}">
+              <div>
+                <div style="font-weight: 700; color: var(--text-base);">${r.date} • ${r.time || '18:00'}</div>
+                <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.15rem;">
+                  ${r.distance_km} km • ${r.duration_str} • <strong>${r.elevation_m}m</strong> climbing (${r.avg_grade_pct}%)
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="telemetry-chip" style="font-size: 0.7rem;">${r.speed_kmh} km/h</span>
+                <span class="telemetry-chip" style="font-size: 0.7rem; color: #8ecae6;">${hrChip}</span>
               </div>
             </div>
-            <div style="font-size: 0.8125rem; font-weight: 600; color: var(--text-base); margin-top: 0.25rem;">No Cardiac Sensor Recorded</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; max-width: 320px; margin: 0.35rem auto 0;">
-              Heart rate monitor was not detected for the latest attempt on this circuit. Connect a BLE/ANT+ monitor to track real-time cardiac load and 5-zone thresholds.
-            </div>
-          </div>
-        `;
-      }
+          `;
+        }).join('');
 
-      // 2. Incline & Elevation Profile HTML
-      const elevHtml = `
-        <div class="telemetry-block">
-          <div class="telemetry-block-header">
-            <div class="telemetry-block-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8ecae6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>
-              Elevation & Grade Profile
-            </div>
-            <div class="telemetry-chips">
-              <span class="telemetry-chip">${r.elevation_m > 0 ? r.elevation_m + 'm Gain' : 'Flat'}</span>
-              <span class="telemetry-chip">${avgGrade}% Avg Grade</span>
-              <span class="telemetry-chip ${gradeBadgeClass}">${gradeLabel}</span>
-            </div>
-          </div>
-
-          <!-- Elevation Cross-Section Canvas -->
-          <div style="position: relative; height: 130px; width: 100%; margin-top: 0.25rem;">
-            <canvas id="routeElevationChart"></canvas>
-          </div>
-
-          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); border-top: 1px solid var(--border-subtle); padding-top: 0.45rem;">
-            <span>Terrain Incline:</span>
-            <div style="display: flex; gap: 0.75rem;">
-              <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #81b29a;"></span>< 2% Flats</span>
-              <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #f2cc8f;"></span>3–5% Rollers</span>
-              <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #e07a5f;"></span>> 6% Steep</span>
-            </div>
-          </div>
-        </div>
-      `;
-
-      panel.innerHTML = hrHtml + elevHtml;
-
-      // 3. Render Elevation Cross-Section Area Chart
-      renderRouteElevationChart(r);
-    }
-
-    function renderRouteDetail(routeIndex) {
-      if (!allActiveRoutes || allActiveRoutes.length === 0) return;
-      selectedRouteIndex = routeIndex;
-      const r = allActiveRoutes[routeIndex];
-      if (!r) return;
-
-      // 1. Sync dropdown selection
-      const dropdown = document.getElementById("routeSelectDropdown");
-      if (dropdown && dropdown.value !== String(routeIndex)) {
-        dropdown.value = String(routeIndex);
-      }
-
-      // 2. Render Athletic Telemetry (HR Zones & Elevation Grade Profile)
-      renderRouteTelemetry(r);
-
-      // 3. Render Form & Recent Pace Info with KPI Tiles
-      const infoPanel = document.getElementById("routeInfoPanel");
-      const lat = r.latest_attempt;
-      const history = r.recent_history || [];
-
-      infoPanel.innerHTML = `
-        <!-- KPI Strip -->
-        <div class="route-kpi-grid">
-          <div class="route-kpi-card">
-            <div class="route-kpi-label">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #e07a5f;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-              Latest Pace
-            </div>
-            <div class="route-kpi-value">${lat.speed_kmh} <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-dim);">km/h</span></div>
-            <div class="route-kpi-sub">${lat.date} • ${lat.duration_str}</div>
-          </div>
-          <div class="route-kpi-card">
-            <div class="route-kpi-label">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #81b29a;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              Target Corridor
-            </div>
-            <div class="route-kpi-value" style="font-size: 1.1rem;">${r.season_pace_range}</div>
-            <div class="route-kpi-sub">Median: ${r.recent_median_speed_kmh} km/h</div>
-          </div>
-          <div class="route-kpi-card">
-            <div class="route-kpi-label">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #8ecae6;"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>
-              Elevation Gain
-            </div>
-            <div class="route-kpi-value">${r.elevation_m > 0 ? r.elevation_m + ' <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-dim);">m</span>' : 'Flat'}</div>
-            <div class="route-kpi-sub">${r.total_attempts} total logged rides</div>
-          </div>
-        </div>
-
-        <!-- Form Status Capsule -->
-        <div class="form-corridor-box">
-          <div class="form-corridor-title">
-            <span>2026 Form Status</span>
-            <span class="form-badge ${lat.form_badge_class}">${lat.form_status}</span>
-          </div>
-          <div style="font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.15rem; line-height: 1.4;">
-            Current ride is pacing 
-            <strong style="color: ${lat.delta_speed_kmh >= 0 ? '#10b981' : '#f59e0b'};">
-              ${lat.delta_vs_recent}
-            </strong> 
-            relative to your recent 2026 rolling baseline (${r.recent_median_speed_kmh} km/h).
-          </div>
-        </div>
-
-        <!-- Speed & Elevation History Progression Chart -->
-        <div class="route-chart-card">
-          <div class="route-chart-header">
-            <div class="route-chart-title">Recent Efforts Progression (Speed & Elevation)</div>
-            <div class="route-chart-legend">
-              <span class="legend-item"><span class="legend-dot" style="background: #e07a5f;"></span>Speed (km/h)</span>
-              <span class="legend-item"><span class="legend-dot" style="background: #8ecae6;"></span>Elevation (m)</span>
-              <span class="legend-item"><span style="border-top: 2px dashed #9aa1ad; width: 12px; display: inline-block;"></span>Median</span>
-            </div>
-          </div>
-          <div style="position: relative; height: 140px; width: 100%; margin-top: 0.25rem;">
-            <canvas id="routeTrajectoryChart"></canvas>
-          </div>
-        </div>
-
-        <button class="btn-ask-route" id="btnAskRouteLoop" data-route="${r.name}" data-km="${r.distance_km}">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Analyse Loop with Coach
-        </button>
-      `;
-
-      // Render Trajectory Line Chart with Dual Axis (Speed + Elevation)
-      renderRouteTrajectoryChart(history, r.recent_median_speed_kmh);
-
-      // Prompt button listener
-      const btnAsk = document.getElementById("btnAskRouteLoop");
-      if (btnAsk) {
-        btnAsk.addEventListener("click", () => {
-          const rName = btnAsk.getAttribute("data-route");
-          const rKm = btnAsk.getAttribute("data-km");
-          const prompt = `How am I trending on my ${rName} (${rKm} km)? Compare my recent efforts in 2026 and suggest how to optimize my pace.`;
-          tabBtnSearch.click();
-          questionInput.value = prompt;
-          sendQuery(prompt);
+        feedList.querySelectorAll(".workout-feed-item").forEach(item => {
+          item.addEventListener("click", () => {
+            const actId = parseInt(item.getAttribute("data-actid"), 10);
+            deepDiveState.selectedActivityId = actId;
+            renderDeepDiveUI();
+          });
         });
       }
-    }
 
-    function loadRoutesData() {
-      const dropdown = document.getElementById("routeSelectDropdown");
-      const infoPanel = document.getElementById("routeInfoPanel");
-
-      fetch('/api/routes/staples')
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === "success" && data.routes && data.routes.length > 0) {
-            allActiveRoutes = data.routes;
-
-            // Populate custom dropdown options
-            if (dropdown) {
-              dropdown.innerHTML = data.routes.map((r, idx) => `
-                <option value="${idx}">
-                  ${r.name} • ${r.distance_km} km (${r.total_attempts} rides)
-                </option>
-              `).join('');
-
-              dropdown.onchange = (e) => {
-                const idx = parseInt(e.target.value, 10);
-                renderRouteDetail(idx);
-              };
-            }
-
-            // Render first active route
-            renderRouteDetail(0);
+      // 9. Wire Coach prompt button
+      const btnAskCoach = document.getElementById("btnAskDeepDiveCoach");
+      if (btnAskCoach) {
+        btnAskCoach.onclick = () => {
+          let prompt = "";
+          if (isSingleRide && activeRide) {
+            prompt = `Analyze my ride on ${activeRide.date} (${activeRide.distance_km} km, ${activeRide.elevation_m}m climbing, pace ${activeRide.speed_kmh} km/h, avg HR ${activeRide.avg_heartrate || 'N/A'} bpm). How did I perform on the climbs and what was my cardiovascular load?`;
           } else {
-            if (dropdown) {
-              dropdown.innerHTML = '<option value="">No active routes found</option>';
-            }
-            infoPanel.innerHTML = '<div style="color: var(--text-dim); padding: 1rem;">No recent route GPS telemetry found.</div>';
+            prompt = `Analyze my recent training window of ${allRides.length} rides (${targetDist} km total, ${targetElev}m total climbing at ${targetGrade}% avg grade, overall pace ${targetSpeed} km/h). How is my climbing form and cardiovascular endurance trending?`;
           }
-        })
-        .catch(err => {
-          if (dropdown) {
-            dropdown.innerHTML = `<option value="">Could not load routes</option>`;
+          const tabBtnSearch = document.getElementById("tabBtnSearch");
+          const questionInput = document.getElementById("questionInput");
+          if (tabBtnSearch && questionInput) {
+            tabBtnSearch.click();
+            questionInput.value = prompt;
+            if (typeof sendQuery === 'function') sendQuery(prompt);
           }
-        });
+        };
+      }
     }
 
-    // Initialize Coach and Routes on load
+    // Initialize Coach and Deep Dive on load
     loadCoachData();
-    loadRoutesData();
+    loadDeepDiveData(deepDiveState.mode, deepDiveState.val);
 
     // ---------------------------------------------------------------------------
     // Shared Analytics Data & Cache

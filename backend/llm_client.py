@@ -19,13 +19,23 @@ class LLMClient:
                 return default
             return val.strip().strip("\"'")
 
-        self.provider = _clean_env("LLM_PROVIDER", "huggingface").lower()
+        self.groq_api_key = _clean_env("GROQ_API_KEY", "")
+        self.groq_model = _clean_env("GROQ_MODEL", "llama-3.3-70b-versatile")
         self.hf_token = _clean_env("HF_TOKEN", "")
         self.hf_model = _clean_env("HF_MODEL", "Qwen/Qwen2.5-72B-Instruct")
         self.ollama_url = _clean_env("OLLAMA_URL", "http://localhost:11434/api/generate")
         self.ollama_model = _clean_env("OLLAMA_MODEL", "mistral")
-        self.groq_api_key = _clean_env("GROQ_API_KEY", "")
-        self.groq_model = _clean_env("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+        # Auto-detect or default provider
+        explicit_provider = _clean_env("LLM_PROVIDER", "")
+        if explicit_provider:
+            self.provider = explicit_provider.lower()
+        elif self.groq_api_key:
+            self.provider = "groq"
+        elif self.hf_token:
+            self.provider = "huggingface"
+        else:
+            self.provider = "groq"
         
         try:
             self.max_tokens = int(_clean_env("MAX_TOKENS", "2048"))
@@ -42,10 +52,14 @@ class LLMClient:
 
     def generate(self, prompt: str, system_instruction: str = None) -> str:
         """Generate a response using the configured provider with automatic fallbacks."""
-        if self.provider == "huggingface":
-            return self._call_huggingface(prompt, system_instruction)
-        elif self.provider == "groq":
+        if self.provider == "groq":
             return self._call_groq(prompt, system_instruction)
+        elif self.provider == "huggingface":
+            res = self._call_huggingface(prompt, system_instruction)
+            # If HF failed and Groq API key is present, fallback to Groq
+            if res.startswith("Error") and self.groq_api_key:
+                return self._call_groq(prompt, system_instruction)
+            return res
         else:
             return self._call_ollama(prompt, system_instruction)
 

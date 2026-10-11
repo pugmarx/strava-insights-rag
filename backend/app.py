@@ -433,6 +433,19 @@ def api_staple_routes():
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
+@app.route("/api/activities/recent", methods=["GET"])
+def api_recent_activities():
+    """Return recent chronological workouts with performance telemetry."""
+    try:
+        from recent_service import get_recent_rides
+        limit = min(int(request.args.get("limit", 10)), 50)
+        data = get_recent_rides(limit=limit)
+        return jsonify({"status": "success", **data}), 200
+    except Exception as e:
+        print(f"[Recent API] Error fetching recent activities: {e}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
 @app.route("/api/cache/clear", methods=["POST"])
 def clear_cache():
     """Manually invalidate both in-memory and database query caches."""

@@ -998,6 +998,216 @@
       font-weight: 600;
     }
 
+    /* Collapsible Recent Form Section */
+    .recent-form-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 1.25rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .recent-form-header {
+      padding: 0.9rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      background: var(--bg-surface);
+      border-bottom: 1px solid transparent;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .recent-form-header:hover {
+      background: var(--bg-surface-hover);
+    }
+
+    .recent-form-section.expanded .recent-form-header {
+      border-bottom-color: var(--border-subtle);
+    }
+
+    .recent-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .recent-header-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .recent-header-badge {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-dim);
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .recent-header-right {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+    }
+
+    .recent-toggle-icon {
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .recent-form-section.expanded .recent-toggle-icon {
+      transform: rotate(180deg);
+    }
+
+    .recent-form-body {
+      display: none;
+      padding: 1.25rem;
+      background: var(--bg-surface);
+    }
+
+    .recent-form-section.expanded .recent-form-body {
+      display: grid;
+      grid-template-columns: 1fr 1.35fr;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 960px) {
+      .recent-form-section.expanded .recent-form-body {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .recent-spotlight-card {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .spotlight-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .spotlight-badge {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 0.15rem 0.5rem;
+      border-radius: var(--radius-sm);
+      background: rgba(224, 122, 95, 0.15);
+      color: var(--accent);
+    }
+
+    .spotlight-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .spotlight-kpi-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .spotlight-kpi-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .spotlight-kpi-val {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+    }
+
+    .spotlight-kpi-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .recent-chart-card {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .recent-chart-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .recent-segmented-range {
+      display: inline-flex;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .recent-range-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.25rem 0.55rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .recent-range-btn.active {
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    }
+
     /* Route Analytics Executive Dashboard Styles */
     .routes-section-header {
       display: flex;
@@ -1360,6 +1570,98 @@
         </div>
         <div class="coach-content" id="coachBriefingContent">
           <div style="color: var(--text-muted); font-size: 0.9rem;">Synthesizing training signals...</div>
+        </div>
+      </div>
+
+      <!-- Collapsible Recent Form & Workouts Section -->
+      <div class="recent-form-section" id="recentFormSection">
+        <div class="recent-form-header" id="recentFormHeader">
+          <div class="recent-header-left">
+            <div class="recent-header-title">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Recent Form & Workouts
+            </div>
+            <div class="recent-header-badge" id="recentHeaderSummaryBadge">
+              Loading recent form...
+            </div>
+          </div>
+          <div class="recent-header-right">
+            <span id="recentToggleLabel">View Details</span>
+            <span class="recent-toggle-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+        </div>
+
+        <div class="recent-form-body" id="recentFormBody">
+          <!-- Left: Latest Workout Spotlight -->
+          <div class="recent-spotlight-card" id="recentSpotlightCard">
+            <div class="spotlight-title-row">
+              <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);" id="spotlightDate">Latest Effort</div>
+              <div class="spotlight-badge" id="spotlightEffortBadge">Pacing</div>
+            </div>
+
+            <div class="spotlight-kpi-grid">
+              <div class="spotlight-kpi-box">
+                <div class="spotlight-kpi-label">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Avg Pace
+                </div>
+                <div class="spotlight-kpi-val" id="spotlightSpeed">-- km/h</div>
+                <div class="spotlight-kpi-sub" id="spotlightSpeedDelta">-- vs rolling</div>
+              </div>
+
+              <div class="spotlight-kpi-box">
+                <div class="spotlight-kpi-label">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  Heart Rate
+                </div>
+                <div class="spotlight-kpi-val" id="spotlightHeartRate">-- bpm</div>
+                <div class="spotlight-kpi-sub" id="spotlightMaxHr">Peak -- bpm</div>
+              </div>
+
+              <div class="spotlight-kpi-box">
+                <div class="spotlight-kpi-label">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  Distance & Time
+                </div>
+                <div class="spotlight-kpi-val" id="spotlightDistance">-- km</div>
+                <div class="spotlight-kpi-sub" id="spotlightDuration">-- duration</div>
+              </div>
+
+              <div class="spotlight-kpi-box">
+                <div class="spotlight-kpi-label">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>
+                  Climbing
+                </div>
+                <div class="spotlight-kpi-val" id="spotlightElevation">-- m</div>
+                <div class="spotlight-kpi-sub" id="spotlightEfficiency">Aerobic Ratio: --</div>
+              </div>
+            </div>
+
+            <button class="btn-ask-route" id="btnAskLatestWorkout" style="margin-top: 0.25rem;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Analyse Latest Effort with Coach
+            </button>
+          </div>
+
+          <!-- Right: Last N Rides Trend Chart -->
+          <div class="recent-chart-card">
+            <div class="recent-chart-toolbar">
+              <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">
+                Chronological Form (Speed vs. Heart Rate)
+              </div>
+              <div class="recent-segmented-range" id="recentRangeControl">
+                <button class="recent-range-btn active" data-limit="5">Last 5</button>
+                <button class="recent-range-btn" data-limit="10">Last 10</button>
+                <button class="recent-range-btn" data-limit="20">Last 20</button>
+              </div>
+            </div>
+
+            <div style="position: relative; height: 175px; width: 100%;">
+              <canvas id="recentTrendChart"></canvas>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2269,6 +2571,9 @@
         })
         .catch(err => console.warn("Fast metrics load error:", err));
 
+      // Prefetch Recent Form data in parallel immediately
+      loadRecentFormData(forceRefresh);
+
       // Also refresh routes immediately in parallel
       if (forceRefresh) {
         loadRoutesData();
@@ -2305,8 +2610,249 @@
 
     const btnRefreshBriefing = document.getElementById("btnRefreshBriefing");
     if (btnRefreshBriefing) {
-      btnRefreshBriefing.addEventListener("click", () => loadCoachData(true));
+      btnRefreshBriefing.addEventListener("click", () => {
+        loadCoachData(true);
+        loadRecentFormData(true);
+      });
     }
+
+    // ---------------------------------------------------------------------------
+    // Recent Form & Workouts Telemetry (Last Ride & Last N Rides)
+    // ---------------------------------------------------------------------------
+    let recentTrendChartInstance = null;
+    let cachedRecentData = null;
+    let selectedRecentLimit = 5;
+
+    const recentFormSection = document.getElementById("recentFormSection");
+    const recentFormHeader = document.getElementById("recentFormHeader");
+    const recentToggleLabel = document.getElementById("recentToggleLabel");
+
+    if (recentFormHeader && recentFormSection) {
+      recentFormHeader.addEventListener("click", () => {
+        const isExpanded = recentFormSection.classList.toggle("expanded");
+        if (recentToggleLabel) {
+          recentToggleLabel.textContent = isExpanded ? "Collapse" : "View Details";
+        }
+        if (isExpanded) {
+          if (cachedRecentData) {
+            renderRecentFormUI(cachedRecentData);
+          } else {
+            loadRecentFormData(false);
+          }
+        }
+      });
+    }
+
+    function renderRecentTrendChart(rides, rollingMedianSpeed) {
+      const canvas = document.getElementById("recentTrendChart");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+
+      if (recentTrendChartInstance) {
+        recentTrendChartInstance.destroy();
+      }
+
+      // Rides come in descending order from API, so reverse for chronological left-to-right plotting
+      const chronological = [...rides].reverse();
+      const labels = chronological.map(r => `${r.date.split(',')[0]} (${r.distance_km}k)`);
+      const speeds = chronological.map(r => r.speed_kmh);
+      const hrs = chronological.map(r => r.avg_heartrate);
+
+      recentTrendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Avg Speed (km/h)',
+              data: speeds,
+              borderColor: '#e07a5f',
+              backgroundColor: 'rgba(224, 122, 95, 0.12)',
+              borderWidth: 2.5,
+              tension: 0.3,
+              fill: true,
+              pointBackgroundColor: '#e07a5f',
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              yAxisID: 'ySpeed'
+            },
+            {
+              label: 'Avg Heart Rate (bpm)',
+              data: hrs,
+              borderColor: '#8ecae6',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              borderDash: [4, 4],
+              tension: 0.3,
+              pointBackgroundColor: '#8ecae6',
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              yAxisID: 'yHr'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: {
+                boxWidth: 10,
+                color: '#9aa1ad',
+                font: { size: 11, weight: '600' }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(22, 26, 33, 0.95)',
+              titleColor: '#fff',
+              bodyColor: '#cbd5e1',
+              borderColor: '#374151',
+              borderWidth: 1,
+              callbacks: {
+                afterBody: (context) => {
+                  const idx = context[0].dataIndex;
+                  const item = chronological[idx];
+                  return [
+                    `Duration: ${item.duration_str}`,
+                    `Elevation: ${item.elevation_m} m`,
+                    item.efficiency_ratio ? `Aerobic Ratio: ${item.efficiency_ratio} spd/HR` : ''
+                  ].filter(Boolean);
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#71717a', font: { size: 10.5 } }
+            },
+            ySpeed: {
+              type: 'linear',
+              position: 'left',
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: {
+                color: '#e07a5f',
+                font: { size: 10.5 },
+                callback: v => `${v}k/h`
+              }
+            },
+            yHr: {
+              type: 'linear',
+              position: 'right',
+              grid: { display: false },
+              ticks: {
+                color: '#8ecae6',
+                font: { size: 10.5 },
+                callback: v => `${v}bpm`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderRecentFormUI(data) {
+      if (!data) return;
+      const lat = data.latest_activity;
+      const med = data.medians || {};
+
+      // 1. Update Header Summary Badge (visible even when collapsed)
+      const badge = document.getElementById("recentHeaderSummaryBadge");
+      if (badge && lat) {
+        const hrText = lat.avg_heartrate ? ` • ❤️ ${lat.avg_heartrate} bpm` : '';
+        badge.innerHTML = `Latest: <strong>${lat.date}</strong> • ${lat.distance_km} km at ${lat.speed_kmh} km/h${hrText}`;
+      }
+
+      // 2. Populate Spotlight Card
+      if (lat) {
+        const dateEl = document.getElementById("spotlightDate");
+        const speedEl = document.getElementById("spotlightSpeed");
+        const deltaEl = document.getElementById("spotlightSpeedDelta");
+        const hrEl = document.getElementById("spotlightHeartRate");
+        const maxHrEl = document.getElementById("spotlightMaxHr");
+        const distEl = document.getElementById("spotlightDistance");
+        const durEl = document.getElementById("spotlightDuration");
+        const elevEl = document.getElementById("spotlightElevation");
+        const effEl = document.getElementById("spotlightEfficiency");
+        const badgeEl = document.getElementById("spotlightEffortBadge");
+
+        if (dateEl) dateEl.textContent = `${lat.date} at ${lat.time || '18:00'}`;
+        if (speedEl) speedEl.textContent = `${lat.speed_kmh} km/h`;
+        if (deltaEl && med.latest_speed_delta) {
+          deltaEl.textContent = `${med.latest_speed_delta} vs 5-ride baseline`;
+          deltaEl.style.color = med.latest_speed_delta.startsWith('+') ? '#10b981' : '#f59e0b';
+        }
+        if (hrEl) hrEl.textContent = lat.avg_heartrate ? `${lat.avg_heartrate} bpm` : 'Not recorded';
+        if (maxHrEl) maxHrEl.textContent = lat.max_heartrate ? `Peak: ${lat.max_heartrate} bpm` : 'No HR sensor';
+        if (distEl) distEl.textContent = `${lat.distance_km} km`;
+        if (durEl) durEl.textContent = `${lat.duration_str} moving time`;
+        if (elevEl) elevEl.textContent = `${lat.elevation_m} m`;
+        if (effEl) effEl.textContent = lat.efficiency_ratio ? `Efficiency: ${lat.efficiency_ratio} spd/HR` : 'Standard Aerobic';
+
+        if (badgeEl) {
+          if (lat.avg_heartrate && lat.avg_heartrate >= 155) {
+            badgeEl.textContent = 'Threshold Stress';
+            badgeEl.style.background = 'rgba(224, 122, 95, 0.2)';
+            badgeEl.style.color = '#e07a5f';
+          } else if (lat.avg_heartrate && lat.avg_heartrate <= 140) {
+            badgeEl.textContent = 'Aerobic Endurance';
+            badgeEl.style.background = 'rgba(129, 178, 154, 0.2)';
+            badgeEl.style.color = '#81b29a';
+          } else {
+            badgeEl.textContent = 'Tempo Effort';
+            badgeEl.style.background = 'rgba(242, 204, 143, 0.2)';
+            badgeEl.style.color = '#f2cc8f';
+          }
+        }
+
+        // Setup "Analyse with Coach" prompt button
+        const btnAsk = document.getElementById("btnAskLatestWorkout");
+        if (btnAsk) {
+          btnAsk.onclick = () => {
+            const hrPrompt = lat.avg_heartrate ? `, avg HR ${lat.avg_heartrate} bpm` : '';
+            const prompt = `Analyze my recent ride on ${lat.date} (${lat.distance_km} km at ${lat.speed_kmh} km/h in ${lat.duration_str}${hrPrompt}). How does this compare to my rolling 5-ride baseline and what does my cardiovascular load suggest?`;
+            tabBtnSearch.click();
+            questionInput.value = prompt;
+            sendQuery(prompt);
+          };
+        }
+      }
+
+      // 3. Render Trend Chart with selected slice
+      const allRides = data.recent_activities || [];
+      const slicedRides = allRides.slice(0, selectedRecentLimit);
+      renderRecentTrendChart(slicedRides, med.speed_kmh);
+    }
+
+    function loadRecentFormData(forceRefresh = false) {
+      fetch('/api/activities/recent?limit=20')
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "success") {
+            cachedRecentData = data;
+            renderRecentFormUI(data);
+          }
+        })
+        .catch(err => console.warn("Error loading recent activity form:", err));
+    }
+
+    // Segmented range buttons for Last 5, 10, 20
+    document.querySelectorAll(".recent-range-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".recent-range-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        selectedRecentLimit = parseInt(btn.getAttribute("data-limit") || "5", 10);
+        if (cachedRecentData) {
+          renderRecentFormUI(cachedRecentData);
+        }
+      });
+    });
 
     // ---------------------------------------------------------------------------
     // Route Explorer, GPS Telemetry & Current Season Form Tracker

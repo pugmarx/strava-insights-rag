@@ -1119,6 +1119,9 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
     }
 
     .route-kpi-value {
@@ -2228,7 +2231,7 @@
             const subActiveEl = document.getElementById("subDaysActive");
             if (activeEl) activeEl.textContent = `${m.days_active} of 7`;
             if (subActiveEl) {
-              subActiveEl.textContent = `🚴‍♂️ ${m.rides_count_7d} Rides • 🏓 ${m.cross_training_days_7d} Movement • 🛌 ${m.rest_days_7d} Rest`;
+              subActiveEl.textContent = `${m.rides_count_7d} Rides • ${m.cross_training_days_7d} Movement • ${m.rest_days_7d} Rest`;
             }
 
             // 2. 7-Day Volume
@@ -2547,17 +2550,26 @@
         <!-- KPI Strip -->
         <div class="route-kpi-grid">
           <div class="route-kpi-card">
-            <div class="route-kpi-label">Latest Pace</div>
+            <div class="route-kpi-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #e07a5f;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Latest Pace
+            </div>
             <div class="route-kpi-value">${lat.speed_kmh} <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-dim);">km/h</span></div>
             <div class="route-kpi-sub">${lat.date} • ${lat.duration_str}</div>
           </div>
           <div class="route-kpi-card">
-            <div class="route-kpi-label">Target Corridor</div>
+            <div class="route-kpi-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #81b29a;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Target Corridor
+            </div>
             <div class="route-kpi-value" style="font-size: 1.1rem;">${r.season_pace_range}</div>
             <div class="route-kpi-sub">Median: ${r.recent_median_speed_kmh} km/h</div>
           </div>
           <div class="route-kpi-card">
-            <div class="route-kpi-label">Elevation Gain</div>
+            <div class="route-kpi-label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #8ecae6;"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>
+              Elevation Gain
+            </div>
             <div class="route-kpi-value">${r.elevation_m > 0 ? r.elevation_m + ' <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-dim);">m</span>' : 'Flat'}</div>
             <div class="route-kpi-sub">${r.total_attempts} total logged rides</div>
           </div>

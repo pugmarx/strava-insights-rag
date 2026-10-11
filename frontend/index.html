@@ -3132,9 +3132,9 @@
       const isLight = document.body.classList.contains("theme-light");
       const chronological = [...allRides].reverse();
       const labels = chronological.map(r => r.date ? r.date.split(',')[0] : '');
-      const speeds = chronological.map(r => r.speed_kmh);
-      const hrs = chronological.map(r => r.avg_heartrate);
-      const elevs = chronological.map(r => r.elevation_m || 0);
+      const speeds = chronological.map(r => typeof r.speed_kmh === 'number' ? Number(r.speed_kmh.toFixed(1)) : r.speed_kmh);
+      const hrs = chronological.map(r => typeof r.avg_heartrate === 'number' ? Math.round(r.avg_heartrate) : r.avg_heartrate);
+      const elevs = chronological.map(r => typeof r.elevation_m === 'number' ? Math.round(r.elevation_m) : (r.elevation_m || 0));
 
       deepDiveProgressionChartInstance = new Chart(canvas, {
         type: 'line',
@@ -3192,11 +3192,29 @@
               padding: 8,
               callbacks: {
                 title: (items) => chronological[items[0].dataIndex]?.date || '',
+                label: (item) => {
+                  const val = item.raw;
+                  if (item.datasetIndex === 0) {
+                    const spd = typeof val === 'number' ? val.toFixed(1) : val;
+                    return `Speed: ${spd} km/h`;
+                  }
+                  if (item.datasetIndex === 1) {
+                    const hr = typeof val === 'number' ? Math.round(val) : val;
+                    return `Heart Rate: ${hr} bpm`;
+                  }
+                  if (item.datasetIndex === 2) {
+                    const el = typeof val === 'number' ? Math.round(val) : val;
+                    return `Climbing: ${el} m`;
+                  }
+                  return `${item.dataset.label}: ${val}`;
+                },
                 afterBody: (items) => {
                   const r = chronological[items[0].dataIndex];
+                  const dist = typeof r.distance_km === 'number' ? r.distance_km.toFixed(1) : r.distance_km;
+                  const eff = typeof r.efficiency_ratio === 'number' ? r.efficiency_ratio.toFixed(1) : r.efficiency_ratio;
                   return [
-                    `Distance: ${r.distance_km} km • ${r.duration_str}`,
-                    r.efficiency_ratio ? `Aerobic Ratio: ${r.efficiency_ratio} spd/HR` : ''
+                    `Distance: ${dist} km • ${r.duration_str}`,
+                    eff ? `Aerobic Ratio: ${eff} spd/HR` : ''
                   ].filter(Boolean);
                 }
               }
@@ -3211,13 +3229,21 @@
               type: 'linear',
               position: 'left',
               grid: { color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.06)' },
-              ticks: { color: '#e07a5f', font: { size: 9.5 }, callback: v => `${v}k/h` }
+              ticks: { 
+                color: '#e07a5f', 
+                font: { size: 9.5 }, 
+                callback: v => typeof v === 'number' ? `${v.toFixed(1)} km/h` : `${v} km/h` 
+              }
             },
             yHr: {
               type: 'linear',
               position: 'right',
               grid: { display: false },
-              ticks: { color: '#81b29a', font: { size: 9.5 }, callback: v => `${v}bpm` }
+              ticks: { 
+                color: '#81b29a', 
+                font: { size: 9.5 }, 
+                callback: v => typeof v === 'number' ? `${Math.round(v)} bpm` : `${v} bpm` 
+              }
             },
             yElev: {
               type: 'linear',
@@ -3273,15 +3299,21 @@
       }
 
       const isSingleRide = !!activeRide;
-      const targetDist = isSingleRide ? activeRide.distance_km : (aggregates.total_distance_km || 0);
-      const targetElev = isSingleRide ? activeRide.elevation_m : (aggregates.total_elevation_m || 0);
+      const targetDist = isSingleRide 
+        ? (typeof activeRide.distance_km === 'number' ? Number(activeRide.distance_km.toFixed(1)) : (activeRide.distance_km || 0)) 
+        : (typeof aggregates.total_distance_km === 'number' ? Number(aggregates.total_distance_km.toFixed(1)) : (aggregates.total_distance_km || 0));
+      const targetElev = isSingleRide 
+        ? (typeof activeRide.elevation_m === 'number' ? Math.round(activeRide.elevation_m) : (activeRide.elevation_m || 0)) 
+        : (typeof aggregates.total_elevation_m === 'number' ? Math.round(aggregates.total_elevation_m) : (aggregates.total_elevation_m || 0));
       const targetDurStr = isSingleRide ? activeRide.duration_str : (aggregates.total_duration_str || '0m');
-      const targetSpeed = isSingleRide ? activeRide.speed_kmh : (aggregates.overall_avg_speed_kmh || medians.speed_kmh || 0);
-      const targetGrade = isSingleRide ? activeRide.avg_grade_pct : (aggregates.overall_avg_grade_pct || 0);
-      const targetAvgHr = isSingleRide ? activeRide.avg_heartrate : aggregates.overall_avg_hr;
-      const targetMaxHr = isSingleRide ? activeRide.max_heartrate : (targetAvgHr ? targetAvgHr + 20 : null);
+      const rawSpeed = isSingleRide ? activeRide.speed_kmh : (aggregates.overall_avg_speed_kmh || medians.speed_kmh || 0);
+      const targetSpeed = typeof rawSpeed === 'number' ? Number(rawSpeed.toFixed(1)) : rawSpeed;
+      const rawGrade = isSingleRide ? activeRide.avg_grade_pct : (aggregates.overall_avg_grade_pct || 0);
+      const targetGrade = typeof rawGrade === 'number' ? Number(rawGrade.toFixed(1)) : rawGrade;
+      const targetAvgHr = isSingleRide ? (activeRide.avg_heartrate ? Math.round(activeRide.avg_heartrate) : null) : (aggregates.overall_avg_hr ? Math.round(aggregates.overall_avg_hr) : null);
+      const targetMaxHr = isSingleRide ? (activeRide.max_heartrate ? Math.round(activeRide.max_heartrate) : null) : (targetAvgHr ? targetAvgHr + 20 : null);
       const targetHrZones = isSingleRide ? activeRide.hr_zones : aggregates.overall_hr_zones;
-      const targetEff = isSingleRide ? activeRide.efficiency_ratio : (targetAvgHr ? Math.round((targetSpeed / targetAvgHr) * 1000) / 10 : null);
+      const targetEff = isSingleRide ? (typeof activeRide.efficiency_ratio === 'number' ? Number(activeRide.efficiency_ratio.toFixed(1)) : activeRide.efficiency_ratio) : (targetAvgHr ? Math.round((targetSpeed / targetAvgHr) * 1000) / 10 : null);
 
       // Grade badge category
       let gradeLabel = "Flats (< 2%)";

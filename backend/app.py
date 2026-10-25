@@ -18,9 +18,10 @@ from flask_cors import CORS
 from sql_rag import handle_rag_query, hybrid_query_handler
 from strava_service import sync_single_activity, delete_activity, sync_incremental, get_latest_activity_timestamp
 try:
-    from garmin_service import sync_garmin_incremental, TOKEN_DIR as GARMIN_TOKEN_DIR
+    from garmin_service import sync_garmin_incremental, get_sync_status_info, TOKEN_DIR as GARMIN_TOKEN_DIR
 except ImportError:
     sync_garmin_incremental = None
+    get_sync_status_info = None
     GARMIN_TOKEN_DIR = None
 from token_manager import get_db_connection
 from cache_manager import init_cache_table, invalidate_all_caches
@@ -317,7 +318,7 @@ def trigger_sync():
     """Trigger on-demand incremental sync of latest activities from Garmin or Strava."""
     try:
         data = request.get_json(silent=True) or {}
-        limit = int(data.get("limit", 50))
+        limit = int(data.get("limit", 10))
         provider = data.get("provider", "").lower()
 
         garmin_available = bool(
@@ -349,7 +350,7 @@ def trigger_sync():
 
 @app.route("/api/sync/status", methods=["GET"])
 def sync_status():
-    """Get database sync statistics (total activities & latest timestamp)."""
+    """Get database sync statistics (total activities & latest timestamp) and provider status."""
     conn = get_db_connection()
     if not conn:
         return jsonify({"error": "Database connection failed"}), 500
@@ -364,18 +365,30 @@ def sync_status():
             else:
                 latest_timestamp = str(latest_val) if latest_val else None
 
-            garmin_available = bool(
-                sync_garmin_incremental and (
-                    (GARMIN_TOKEN_DIR and GARMIN_TOKEN_DIR.exists() and any(GARMIN_TOKEN_DIR.iterdir()))
-                    or os.getenv("GARMIN_EMAIL")
-                )
+        garmin_available = bool(
+            sync_garmin_incremental and (
+                (GARMIN_TOKEN_DIR and GARMIN_TOKEN_DIR.exists() and any(GARMIN_TOKEN_DIR.iterdir()))
+                or os.getenv("GARMIN_EMAIL")
             )
+        )
+        provider = "garmin" if garmin_available else "strava"
 
-            return jsonify({
-                "total_activities": total_activities,
-                "latest_timestamp": latest_timestamp,
-                "provider": "garmin" if garmin_available else "strava"
-            }), 200
+        sync_info = {}
+        if garmin_available and get_sync_status_info:
+            try:
+                sync_info = get_sync_status_info()
+            except Exception as e:
+                print(f"[Sync Status] Error getting sync info: {e}")
+
+        return jsonify({
+            "total_activities": total_activities,
+            "latest_timestamp": latest_timestamp,
+            "provider": provider,
+            "is_syncing": sync_info.get("is_syncing", False),
+            "last_sync_time": sync_info.get("last_sync_time"),
+            "seconds_since_sync": sync_info.get("seconds_since_sync"),
+            "is_stale": sync_info.get("is_stale", True)
+        }), 200
     except Exception as e:
         print(f"[Sync Status] Query error: {e}")
         return jsonify({"error": str(e)}), 500

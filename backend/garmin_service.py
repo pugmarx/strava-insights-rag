@@ -1,5 +1,7 @@
 import os
 import sys
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
@@ -17,6 +19,11 @@ try:
     from garminconnect import Garmin
 except ImportError:
     Garmin = None
+
+_sync_lock = threading.Lock()
+_last_sync_time = None
+_is_syncing = False
+
 
 GARMIN_TYPE_MAP = {
     "cycling": "Ride",
@@ -199,63 +206,102 @@ def save_garmin_activity_to_db(garmin_act, client=None):
         conn.close()
 
 
-def sync_garmin_incremental(limit=50):
-    """Fetch new workouts from Garmin that are newer than latest DB record."""
-    client = get_garmin_client()
-    
-    conn = get_db_connection()
-    latest_ts = None
-    if conn:
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT MAX(timestamp) FROM activities")
-                row = cur.fetchone()
-                if row and row[0]:
-                    latest_ts = row[0]
-        finally:
-            conn.close()
-
-    print(f"[GarminService] Checking Garmin for activities (latest in DB: {latest_ts})...")
-    garmin_activities = client.get_activities(0, min(limit, 100))
-    if not garmin_activities:
-        return {"status": "success", "synced_count": 0, "message": "No activities found in Garmin"}
-
-    synced_count = 0
-    synced_activities = []
-
-    for act in garmin_activities:
-        start_str = act.get("startTimeLocal") or act.get("startTimeGMT")
-        act_ts = parse_garmin_timestamp(start_str)
-
-        # If we have a latest timestamp, only ingest newer activities
-        if latest_ts and act_ts <= latest_ts:
-            continue
-
-        try:
-            save_garmin_activity_to_db(act, client=client)
-            synced_count += 1
-            synced_activities.append({
-                "id": act.get("activityId"),
-                "name": act.get("activityName"),
-                "type": act.get("activityType", {}).get("typeKey"),
-                "date": start_str
-            })
-            print(f"[GarminService] Synced: {act.get('activityName')} ({act.get('activityId')}) on {start_str}")
-        except Exception as e:
-            print(f"[GarminService] Error saving activity {act.get('activityId')}: {e}")
-
-    # Also sync recent daily wellness (steps, intensity minutes, active calories)
-    try:
-        sync_garmin_wellness(days=7)
-    except Exception as e:
-        print(f"[GarminService] Note: Wellness sync skipped/failed: {e}")
-
+def get_sync_status_info():
+    """Return status dictionary for sync endpoints."""
+    global _last_sync_time, _is_syncing
+    now = time.time()
+    seconds_since = int(now - _last_sync_time) if _last_sync_time else None
+    is_stale = (_last_sync_time is None) or (seconds_since > 900)  # 15 mins
     return {
-        "status": "success",
         "provider": "garmin",
-        "synced_count": synced_count,
-        "activities": synced_activities
+        "is_syncing": _is_syncing,
+        "last_sync_time": _last_sync_time,
+        "seconds_since_sync": seconds_since,
+        "is_stale": is_stale
     }
+
+
+def sync_garmin_incremental(limit=10, sync_wellness=True):
+    """Fetch new workouts from Garmin that are newer than latest DB record."""
+    global _last_sync_time, _is_syncing
+
+    acquired = _sync_lock.acquire(blocking=False)
+    if not acquired:
+        return {
+            "status": "in_progress",
+            "message": "A Garmin sync is already running",
+            "provider": "garmin",
+            "synced_count": 0
+        }
+
+    _is_syncing = True
+    try:
+        client = get_garmin_client()
+
+        conn = get_db_connection()
+        latest_ts = None
+        if conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT MAX(timestamp) FROM activities")
+                    row = cur.fetchone()
+                    if row and row[0]:
+                        latest_ts = row[0]
+            finally:
+                conn.close()
+
+        print(f"[GarminService] Checking Garmin for activities (latest in DB: {latest_ts})...")
+        garmin_activities = client.get_activities(0, min(limit, 20))
+        if not garmin_activities:
+            _last_sync_time = time.time()
+            return {"status": "success", "synced_count": 0, "message": "No activities found in Garmin"}
+
+        synced_count = 0
+        synced_activities = []
+
+        for act in garmin_activities:
+            start_str = act.get("startTimeLocal") or act.get("startTimeGMT")
+            act_ts = parse_garmin_timestamp(start_str)
+
+            # If we have a latest timestamp, only ingest newer activities
+            if latest_ts and act_ts <= latest_ts:
+                continue
+
+            try:
+                save_garmin_activity_to_db(act, client=client)
+                synced_count += 1
+                synced_activities.append({
+                    "id": act.get("activityId"),
+                    "name": act.get("activityName"),
+                    "type": act.get("activityType", {}).get("typeKey"),
+                    "date": start_str
+                })
+                print(f"[GarminService] Synced: {act.get('activityName')} ({act.get('activityId')}) on {start_str}")
+            except Exception as e:
+                print(f"[GarminService] Error saving activity {act.get('activityId')}: {e}")
+
+        # Offload daily wellness (steps, intensity minutes, active calories) to a daemon background thread
+        # so the API call returns immediately without waiting ~20s for 7 day-by-day calls.
+        if sync_wellness:
+            def _async_wellness():
+                try:
+                    sync_garmin_wellness(days=7)
+                except Exception as e:
+                    print(f"[GarminService] Background wellness sync error: {e}")
+            threading.Thread(target=_async_wellness, daemon=True).start()
+
+        _last_sync_time = time.time()
+        return {
+            "status": "success",
+            "provider": "garmin",
+            "synced_count": synced_count,
+            "activities": synced_activities,
+            "last_sync_time": _last_sync_time
+        }
+    finally:
+        _is_syncing = False
+        _sync_lock.release()
+
 
 
 def sync_garmin_wellness(days=14):

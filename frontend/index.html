@@ -1670,8 +1670,12 @@
           <p>cycling, movement, and more...</p>
         </div>
       </div>
-      <div class="header-actions">
-        <button class="btn btn-secondary" id="syncButton" title="Sync Strava Activities" style="padding: 0.5rem 0.625rem; line-height: 1;">
+      <div class="header-actions" style="display: flex; align-items: center; gap: 0.5rem;">
+        <span id="syncStatusBadge" style="font-size: 0.75rem; color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 4px; background: var(--bg-card); border: 1px solid var(--border-color); display: inline-flex; align-items: center; gap: 0.4rem;">
+          <span id="syncIndicatorDot" style="width: 7px; height: 7px; border-radius: 50%; background-color: var(--accent-teal); display: inline-block;"></span>
+          <span id="syncStatusMessage">Garmin Connect</span>
+        </span>
+        <button class="btn btn-secondary" id="syncButton" title="Garmin Connect: Pull latest activities" style="padding: 0.5rem 0.625rem; line-height: 1;">
           <span id="syncBtnText"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg></span>
         </button>
         <button class="btn btn-secondary" id="themeToggleBtn" title="Toggle Light/Dark Theme" style="padding: 0.5rem 0.625rem; line-height: 1;">
@@ -1916,7 +1920,6 @@
                 <label for="modeHybrid">Hybrid (RAG + SQL)</label>
               </div>
             </div>
-            <span id="syncStatusMessage" style="font-size: 0.8125rem; color: var(--text-dim);"></span>
           </div>
         </div>
 
@@ -2518,8 +2521,27 @@
       });
     });
 
-    // Fetch Database Stats
-    function loadStats() {
+    // Sync status and badge helpers
+    function updateSyncBadge(text, color, spinning = false) {
+      if (syncStatusMessage) syncStatusMessage.textContent = text;
+      const dot = document.getElementById("syncIndicatorDot");
+      if (dot && color) dot.style.backgroundColor = color;
+      if (syncBtnText) {
+        if (spinning) syncBtnText.classList.add("syncing-spin");
+        else syncBtnText.classList.remove("syncing-spin");
+      }
+    }
+
+    function formatTimeAgo(seconds) {
+      if (seconds === null || seconds === undefined) return null;
+      if (seconds < 60) return "Just now";
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+      return `${Math.floor(seconds / 86400)}d ago`;
+    }
+
+    // Fetch Database Stats & Provider Status
+    function loadStats(checkAutoSync = false) {
       fetch('/api/sync/status')
         .then(res => res.json())
         .then(data => {
@@ -2533,6 +2555,25 @@
               } else {
                 dbLatestDate.textContent = 'None';
               }
+            }
+          }
+
+          const providerName = data.provider === 'garmin' ? 'Garmin' : 'Strava';
+          if (data.is_syncing) {
+            syncButton.disabled = true;
+            updateSyncBadge(`Syncing ${providerName}...`, "var(--accent-coral, #e07a5f)", true);
+          } else {
+            syncButton.disabled = false;
+            const timeAgo = formatTimeAgo(data.seconds_since_sync);
+            if (timeAgo) {
+              updateSyncBadge(`${providerName} • ${timeAgo}`, "var(--accent-teal, #81b29a)", false);
+            } else {
+              updateSyncBadge(`${providerName} Connected`, "var(--accent-teal, #81b29a)", false);
+            }
+
+            // Opportunistic on-page-load sync: if data is stale (> 15 mins) and not currently syncing
+            if (checkAutoSync && data.is_stale && data.provider === 'garmin') {
+              triggerSync(true);
             }
           }
         })
@@ -2552,39 +2593,52 @@
         .catch(() => {});
     }
 
-    // Sync button
-    syncButton.addEventListener("click", () => {
+    function triggerSync(isAuto = false) {
+      if (syncButton.disabled) return;
       syncButton.disabled = true;
-      syncBtnText.classList.add("syncing-spin");
-      syncStatusMessage.textContent = "Fetching latest activity data...";
+      const providerName = "Garmin";
+      updateSyncBadge(isAuto ? `Updating ${providerName}...` : `Syncing ${providerName}...`, "var(--accent-coral, #e07a5f)", true);
 
       fetch('/api/sync', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ limit: 50 })
+        body: JSON.stringify({ limit: 10 })
       })
       .then(res => res.json())
       .then(data => {
         syncButton.disabled = false;
-        if (data.status === "success") {
-          syncStatusMessage.textContent = `Synced ${data.synced_count} activities`;
-          loadStats();
+        syncBtnText.classList.remove("syncing-spin");
+        if (data.status === "success" || data.status === "in_progress") {
+          const count = data.synced_count || 0;
+          if (count > 0) {
+            updateSyncBadge(`Synced ${count} new`, "var(--accent-teal, #81b29a)", false);
+          } else {
+            updateSyncBadge(`${providerName} • Up to date`, "var(--accent-teal, #81b29a)", false);
+          }
+          loadStats(false);
           loadAthleteVitals();
           if (typeof loadDeepDiveData === 'function') loadDeepDiveData(deepDiveState.mode, deepDiveState.val);
-          setTimeout(() => { syncStatusMessage.textContent = ""; }, 5000);
+          setTimeout(() => { loadStats(false); }, 3000);
         } else {
-          syncStatusMessage.textContent = `Sync failed: ${data.error || 'Unknown'}`;
+          updateSyncBadge(`Sync: ${data.error || data.message || 'Error'}`, "var(--accent-coral, #e07a5f)", false);
+          setTimeout(() => { loadStats(false); }, 4000);
         }
       })
       .catch(err => {
         syncButton.disabled = false;
         syncBtnText.classList.remove("syncing-spin");
-        syncStatusMessage.textContent = `Error: ${err.message}`;
+        updateSyncBadge(`Sync error: ${err.message}`, "var(--accent-coral, #e07a5f)", false);
+        setTimeout(() => { loadStats(false); }, 4000);
       });
+    }
+
+    // Sync button
+    syncButton.addEventListener("click", () => {
+      triggerSync(false);
     });
 
     // Initial load
-    loadStats();
+    loadStats(true);
 
     // ---------------------------------------------------------------------------
     // Light / Dark Theme Switcher

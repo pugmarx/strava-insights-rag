@@ -56,7 +56,12 @@ def test_garmin_connection():
 
             # Persist tokens so we don't need credentials or MFA next time
             token_dir.mkdir(parents=True, exist_ok=True)
-            client.garth.dump(str(token_dir))
+            if hasattr(client, "garth") and hasattr(client.garth, "dump"):
+                client.garth.dump(str(token_dir))
+            elif hasattr(client, "client") and hasattr(client.client, "dump"):
+                client.client.dump(str(token_dir))
+            elif hasattr(client, "dump") and callable(client.dump):
+                client.dump(str(token_dir))
             print(f">> Session tokens successfully saved to {token_dir}")
         except Exception as e:
             print(f"\n[FAIL] Authentication failed: {e}")

@@ -11,12 +11,28 @@ from garminconnect import Garmin
 
 def diagnose():
     token_dir = project_root / ".garmin_tokens"
-    client = Garmin()
-    client.login(str(token_dir))
+    email = os.getenv("GARMIN_EMAIL", "").strip()
+    password = os.getenv("GARMIN_PASSWORD", "").strip()
+    kwargs = {}
+    if email and password:
+        kwargs["email"] = email
+        kwargs["password"] = password
+
+    client = Garmin(**kwargs)
+    try:
+        client.login(str(token_dir))
+    except Exception:
+        client.login()
 
     print("--- User Profile & Settings ---")
     try:
-        profile = client.garth.profile
+        if hasattr(client, "garth") and hasattr(client.garth, "profile"):
+            profile = client.garth.profile
+        else:
+            profile = {
+                "displayName": getattr(client, "display_name", None),
+                "fullName": getattr(client, "full_name", None),
+            }
         print(f"Profile: {profile}")
     except Exception as e:
         print(f"Error fetching profile: {e}")

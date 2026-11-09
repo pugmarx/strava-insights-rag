@@ -65,28 +65,55 @@ def encode_coords_to_polyline(coords):
     return "".join(result)
 
 
+def save_garmin_tokens(client, token_dir):
+    """Safely persist tokens across both garminconnect 0.2.x (garth) and 0.3.x (client)."""
+    try:
+        path = Path(token_dir)
+        path.mkdir(parents=True, exist_ok=True)
+        if hasattr(client, "garth") and hasattr(client.garth, "dump"):
+            client.garth.dump(str(path))
+        elif hasattr(client, "client") and hasattr(client.client, "dump"):
+            client.client.dump(str(path))
+        elif hasattr(client, "dump") and callable(client.dump):
+            client.dump(str(path))
+    except Exception as e:
+        print(f"[GarminService] Warning: Could not persist session tokens: {e}")
+
+
 def get_garmin_client():
     """Initialize Garmin client from cached session tokens or credentials."""
     if Garmin is None:
         raise RuntimeError("garminconnect is not installed.")
 
-    client = Garmin()
+    email = os.getenv("GARMIN_EMAIL", "").strip()
+    password = os.getenv("GARMIN_PASSWORD", "").strip()
+
+    # Pass credentials if available so garminconnect can self-heal/re-authenticate if tokens are stale or legacy
+    kwargs = {}
+    if email and password:
+        kwargs["email"] = email
+        kwargs["password"] = password
+
+    client = Garmin(**kwargs)
     if TOKEN_DIR.exists() and any(TOKEN_DIR.iterdir()):
         try:
             client.login(str(TOKEN_DIR))
+            save_garmin_tokens(client, TOKEN_DIR)
             return client
         except Exception as e:
             print(f"[GarminService] Cached token login failed ({e}), trying credentials...")
 
-    email = os.getenv("GARMIN_EMAIL", "").strip()
-    password = os.getenv("GARMIN_PASSWORD", "").strip()
     if not email or not password:
         raise RuntimeError("No valid Garmin session tokens or credentials found in .env.")
 
     client = Garmin(email=email, password=password)
-    client.login()
-    TOKEN_DIR.mkdir(parents=True, exist_ok=True)
-    client.garth.dump(str(TOKEN_DIR))
+    try:
+        # On garminconnect 0.3.x, passing tokenstore path to login auto-dumps
+        client.login(str(TOKEN_DIR))
+    except (TypeError, Exception):
+        client.login()
+
+    save_garmin_tokens(client, TOKEN_DIR)
     return client
 
 
@@ -251,7 +278,7 @@ def sync_garmin_incremental(limit=10, sync_wellness=True):
                 conn.close()
 
         print(f"[GarminService] Checking Garmin for activities (latest in DB: {latest_ts})...")
-        garmin_activities = client.get_activities(0, min(limit, 20))
+        garmin_activities = client.get_activities(0, min(max(limit, 10), 50))
         if not garmin_activities:
             _last_sync_time = time.time()
             return {"status": "success", "synced_count": 0, "message": "No activities found in Garmin"}
@@ -259,12 +286,15 @@ def sync_garmin_incremental(limit=10, sync_wellness=True):
         synced_count = 0
         synced_activities = []
 
+        norm_latest_ts = latest_ts.replace(tzinfo=None) if latest_ts and hasattr(latest_ts, "tzinfo") and latest_ts.tzinfo else latest_ts
+
         for act in garmin_activities:
             start_str = act.get("startTimeLocal") or act.get("startTimeGMT")
             act_ts = parse_garmin_timestamp(start_str)
+            norm_act_ts = act_ts.replace(tzinfo=None) if act_ts and hasattr(act_ts, "tzinfo") and act_ts.tzinfo else act_ts
 
             # If we have a latest timestamp, only ingest newer activities
-            if latest_ts and act_ts <= latest_ts:
+            if norm_latest_ts and norm_act_ts and norm_act_ts <= norm_latest_ts:
                 continue
 
             try:
